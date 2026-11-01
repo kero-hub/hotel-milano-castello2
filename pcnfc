@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="it" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NFC ACR122 · Alloggiato KM Manager</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config={darkMode:'class',theme:{extend:{fontFamily:{sans:['Inter','sans-serif']}}}}</script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>body{font-family:'Inter',sans-serif}</style>
+</head>
+<body class="h-full bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 flex flex-col">
+
+<header class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shadow-sm">
+  <div class="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-indigo-600 flex items-center justify-center text-white">
+        <i class="fa-solid fa-credit-card text-lg"></i>
+      </div>
+      <div>
+        <span class="block text-sm font-black text-amber-600 tracking-wider uppercase">Alloggiato KM Manager</span>
+        <h1 class="text-xs font-semibold text-slate-600 dark:text-slate-300">Lettore ACR122 (PC)</h1>
+      </div>
+    </div>
+    <span id="ws-status" class="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-rose-50 text-rose-600 border border-rose-200">Disconnesso</span>
+  </div>
+</header>
+
+<main class="flex-1 max-w-lg w-full mx-auto px-4 py-6 flex flex-col gap-5">
+
+  <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6 text-center">
+    <div id="icon" class="w-20 h-20 mx-auto rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-3xl text-slate-400 mb-4">
+      <i class="fa-solid fa-wifi"></i>
+    </div>
+    <h2 class="text-base font-bold mb-1">Avvicina la tessera all’ACR122</h2>
+    <p class="text-xs text-slate-500">Lo script Python deve essere in esecuzione sul PC</p>
+  </div>
+
+  <div id="result" class="hidden bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-5">
+    <h3 class="text-sm font-bold mb-3 flex items-center gap-2 text-emerald-600">
+      <i class="fa-solid fa-check-circle"></i> Tessera letta
+    </h3>
+    <div class="space-y-2 text-xs">
+      <div class="flex justify-between gap-2">
+        <span class="text-slate-500">UID</span>
+        <span id="res-uid" class="font-mono font-bold text-right break-all"></span>
+      </div>
+      <div class="flex justify-between gap-2">
+        <span class="text-slate-500">ATR</span>
+        <span id="res-atr" class="font-mono text-right break-all text-[10px]"></span>
+      </div>
+      <div class="flex justify-between gap-2">
+        <span class="text-slate-500">Ora</span>
+        <span id="res-time" class="font-semibold"></span>
+      </div>
+    </div>
+    <button onclick="copyUid()" class="mt-4 w-full py-2 bg-slate-100 dark:bg-slate-700 rounded-xl text-xs font-semibold">
+      <i class="fa-solid fa-copy"></i> Copia UID
+    </button>
+  </div>
+
+  <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-4">
+    <h3 class="text-xs font-bold text-slate-500 uppercase mb-2">Log</h3>
+    <div id="log" class="text-[11px] font-mono text-slate-600 dark:text-slate-400 max-h-48 overflow-y-auto space-y-1"></div>
+  </div>
+</main>
+
+<footer class="border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-3">
+  <p class="text-center text-[11px] text-slate-500">Copyright © Alloggiati KM Manager | All rights reserved</p>
+</footer>
+
+<script>
+const WS_URL = 'ws://127.0.0.1:8765';
+let ws;
+let lastUid = '';
+
+function log(msg) {
+  const el = document.getElementById('log');
+  const t = new Date().toLocaleTimeString('it-IT');
+  el.innerHTML = `<div><span class="text-slate-400">[${t}]</span> ${msg}</div>` + el.innerHTML;
+}
+
+function setStatus(ok) {
+  const el = document.getElementById('ws-status');
+  if (ok) {
+    el.textContent = 'Collegato';
+    el.className = 'px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200';
+  } else {
+    el.textContent = 'Disconnesso';
+    el.className = 'px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-rose-50 text-rose-600 border border-rose-200';
+  }
+}
+
+function connect() {
+  ws = new WebSocket(WS_URL);
+
+  ws.onopen = () => {
+    setStatus(true);
+    log('Collegato al bridge Python');
+    document.getElementById('icon').className = 'w-20 h-20 mx-auto rounded-full bg-amber-50 flex items-center justify-center text-3xl text-amber-500 mb-4 animate-pulse';
+  };
+
+  ws.onclose = () => {
+    setStatus(false);
+    log('Disconnesso — riprovo tra 3 secondi...');
+    document.getElementById('icon').className = 'w-20 h-20 mx-auto rounded-full bg-slate-100 flex items-center justify-center text-3xl text-slate-400 mb-4';
+    setTimeout(connect, 3000);
+  };
+
+  ws.onerror = () => log('Errore WebSocket (Python in esecuzione?)');
+
+  ws.onmessage = (ev) => {
+    let data;
+    try { data = JSON.parse(ev.data); } catch { return; }
+
+    if (data.event === 'hello') {
+      log(data.message);
+    } else if (data.event === 'card') {
+      lastUid = data.uid || '';
+      document.getElementById('res-uid').textContent = data.uid || '—';
+      document.getElementById('res-atr').textContent = data.atr || '—';
+      document.getElementById('res-time').textContent = data.time || '—';
+      document.getElementById('result').classList.remove('hidden');
+      document.getElementById('icon').className = 'w-20 h-20 mx-auto rounded-full bg-emerald-50 flex items-center justify-center text-3xl text-emerald-500 mb-4';
+      log('Tessera UID: ' + (data.uid || '—'));
+    } else if (data.event === 'removed') {
+      log('Tessera rimossa');
+      document.getElementById('icon').className = 'w-20 h-20 mx-auto rounded-full bg-amber-50 flex items-center justify-center text-3xl text-amber-500 mb-4 animate-pulse';
+    } else if (data.event === 'error') {
+      log('Errore: ' + data.message);
+    }
+  };
+}
+
+function copyUid() {
+  if (!lastUid) return;
+  navigator.clipboard.writeText(lastUid).then(() => log('UID copiato'));
+}
+
+connect();
+</script>
+</body>
+</html>
