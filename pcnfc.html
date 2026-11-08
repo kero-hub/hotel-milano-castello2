@@ -1,117 +1,489 @@
-async function apiCall(payload) {
-  var params = new URLSearchParams();
-  Object.keys(payload || {}).forEach(function (k) {
-    var v = payload[k];
-    if (v !== undefined && v !== null && v !== '') params.set(k, String(v));
-  });
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Timbrature NFC · Alloggiato KM Manager</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class', theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } } } }
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>body{font-family:Inter,sans-serif}</style>
+</head>
+<body class="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100">
 
-  var url = SCRIPT_URL + (SCRIPT_URL.indexOf('?') >= 0 ? '&' : '?') + params.toString();
-  console.log('API URL:', url);
+<div id="toast" class="fixed top-4 right-4 z-[60] space-y-2"></div>
 
-  var res = await fetch(url, {
-    method: 'GET',
-    redirect: 'follow',
-    cache: 'no-cache',
-    credentials: 'omit'
-  });
+<!-- LOGIN -->
+<div id="login-overlay" class="fixed inset-0 z-50 bg-slate-900/95 backdrop-blur-md flex items-center justify-center p-4">
+  <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 w-full max-w-md p-6 sm:p-8">
+    <div class="text-center mb-6">
+      <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-500 to-indigo-600 flex items-center justify-center text-white mx-auto mb-4">
+        <i class="fa-solid fa-id-card-clip text-2xl"></i>
+      </div>
+      <h2 class="text-xl font-bold">Alloggiato KM Manager</h2>
+      <p class="text-xs text-slate-500 mt-1">Timbrature NFC — Inserisci username e password</p>
+    </div>
+    <form onsubmit="handleLogin(event)" class="space-y-4">
+      <div>
+        <label class="block text-xs font-semibold mb-1">Username</label>
+        <input id="username" required autocomplete="username" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold mb-1">Password</label>
+        <input id="password" type="password" required autocomplete="current-password" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs">
+      </div>
+      <div id="login-error" class="hidden text-xs text-rose-600 text-center font-medium"></div>
+      <button type="submit" class="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold rounded-xl">Accedi</button>
+    </form>
+  </div>
+</div>
 
-  var text = await res.text();
-  console.log('API RAW:', text);
+<div id="app" class="hidden">
+  <header class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-20 shadow-sm">
+    <div class="max-w-5xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-indigo-600 text-white flex items-center justify-center">
+          <i class="fa-solid fa-id-card-clip"></i>
+        </div>
+        <div>
+          <div class="text-sm font-black text-amber-600 uppercase tracking-wider">Alloggiato KM Manager</div>
+          <div class="text-xs text-slate-500">Timbrature NFC · Hotel Milano Castello</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 flex-wrap">
+        <span id="ws-status" class="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-rose-50 text-rose-600 border border-rose-200">Bridge OFF</span>
+        <span class="px-2.5 py-1 text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 rounded-lg">
+          <i class="fa-solid fa-user-check"></i> <span id="logged-username">Utente</span>
+        </span>
+        <button type="button" onclick="document.documentElement.classList.toggle('dark')" class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-xs">
+          <i class="fa-solid fa-moon dark:hidden"></i><i class="fa-solid fa-sun hidden dark:inline"></i>
+        </button>
+        <button type="button" onclick="handleLogout()" class="px-3 py-2 text-xs font-semibold text-rose-600 bg-rose-50 rounded-lg">Esci</button>
+      </div>
+    </div>
+  </header>
 
-  if (!text || text.trim().charAt(0) === '<') {
-    throw new Error('Risposta non JSON dallo script');
+  <main class="max-w-5xl mx-auto px-4 py-6 space-y-5">
+    <section class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 shadow-sm">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 class="text-base font-bold">Avvicina il cartellino all’ACR122</h1>
+          <p class="text-xs text-slate-500">Orari arrotondati ai 15 minuti · Avvia nfc_bridge.py sul PC</p>
+        </div>
+        <div class="text-sm">UID: <span id="last-uid" class="font-mono font-semibold">—</span></div>
+      </div>
+      <div id="live-msg" class="mt-3 text-sm font-semibold text-slate-600 dark:text-slate-300"></div>
+    </section>
+
+    <section id="create-box" class="hidden bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-2xl p-5">
+      <h2 class="text-sm font-bold mb-2 text-amber-800 dark:text-amber-200">Tessera nuova — crea dipendente</h2>
+      <p class="text-xs mb-2">UID: <span id="new-uid" class="font-mono font-semibold"></span></p>
+      <input id="new-name" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-600 text-sm mb-3 bg-white dark:bg-slate-900" placeholder="Nome e cognome">
+      <button type="button" onclick="creaETimbra()" class="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold rounded-xl">Salva e timbra IN</button>
+    </section>
+
+    <section class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-5">
+      <div class="flex items-center justify-between gap-2 mb-3">
+        <h2 class="text-sm font-bold flex items-center gap-2"><i class="fa-solid fa-users text-amber-500"></i> Dipendenti</h2>
+        <button type="button" onclick="loadDipendenti()" class="px-3 py-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg">Aggiorna</button>
+      </div>
+      <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
+        <table class="w-full text-left text-xs">
+          <thead>
+            <tr class="bg-amber-500/10 text-amber-900 dark:text-amber-200 font-bold border-b border-amber-500/20">
+              <th class="p-2.5">Stato</th>
+              <th class="p-2.5">Nome</th>
+              <th class="p-2.5">Arrivo (15 min)</th>
+              <th class="p-2.5">UID</th>
+            </tr>
+          </thead>
+          <tbody id="dip-body" class="divide-y divide-slate-100 dark:divide-slate-700/50">
+            <tr><td colspan="4" class="p-4 text-center text-slate-400">—</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-5">
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <h2 class="text-sm font-bold flex items-center gap-2"><i class="fa-solid fa-table-list text-amber-500"></i> Turni del mese</h2>
+        <div class="flex flex-wrap gap-2">
+          <select id="f-mese" class="px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-xs bg-white dark:bg-slate-900"></select>
+          <input id="f-anno" type="number" class="w-20 px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-xs bg-white dark:bg-slate-900">
+          <input id="f-nome" type="text" placeholder="Filtra nome..." class="px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-xs bg-white dark:bg-slate-900">
+          <button type="button" onclick="loadTurni()" class="px-3 py-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg">Filtra</button>
+        </div>
+      </div>
+      <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700 mb-4">
+        <table class="w-full text-left text-xs">
+          <thead>
+            <tr class="bg-amber-500/10 text-amber-900 dark:text-amber-200 font-bold border-b border-amber-500/20">
+              <th class="p-2.5">Dipendente</th>
+              <th class="p-2.5">Data IN</th>
+              <th class="p-2.5">Ora IN</th>
+              <th class="p-2.5">Data OUT</th>
+              <th class="p-2.5">Ora OUT</th>
+              <th class="p-2.5">Ore turno</th>
+            </tr>
+          </thead>
+          <tbody id="turni-body" class="divide-y divide-slate-100 dark:divide-slate-700/50">
+            <tr><td colspan="6" class="p-4 text-center text-slate-400">—</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3 class="text-xs font-bold text-slate-500 uppercase mb-2">Totali mese</h3>
+      <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
+        <table class="w-full text-left text-xs">
+          <thead>
+            <tr class="bg-indigo-500/10 font-bold border-b border-slate-200 dark:border-slate-700">
+              <th class="p-2.5">Dipendente</th>
+              <th class="p-2.5">Ore totali mese</th>
+            </tr>
+          </thead>
+          <tbody id="tot-body">
+            <tr><td colspan="2" class="p-3 text-center text-slate-400">—</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="border-t border-slate-200 dark:border-slate-700 py-3 text-center text-[11px] text-slate-500">
+    Copyright © Alloggiati KM Manager | All rights reserved
+  </footer>
+</div>
+
+<script>
+  const LOGIN_URL = 'https://script.google.com/macros/s/AKfycbxJpJZmw3Yr2odzTh-bmUpTqRPbKu2z_8hT0WbZ3ig-Rn5iopRxXLjuqTGaxSeYifhJ/exec';
+  const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwgeaYGpsShHBoLHycMA3zkgdawZ4w-TSyZZ4Z5tM_8W_pzN79XciSLiGpjBV_U66Mf/exec';
+  const WS_URL = 'ws://127.0.0.1:8765';
+
+  let loggedUserName = '';
+  let pendingUid = '';
+  let busy = false;
+  let ws = null;
+
+  function roundTo15(oraStr) {
+    if (!oraStr) return '—';
+    var p = String(oraStr).trim().split(':');
+    var h = parseInt(p[0], 10) || 0;
+    var m = parseInt(p[1], 10) || 0;
+    var total = h * 60 + m;
+    var rounded = Math.round(total / 15) * 15;
+    if (rounded >= 24 * 60) rounded = 24 * 60 - 15;
+    var rh = Math.floor(rounded / 60);
+    var rm = rounded % 60;
+    return String(rh).padStart(2, '0') + ':' + String(rm).padStart(2, '0');
   }
 
-  var json = JSON.parse(text);
-
-  // tessera nuova
-  if (json.needCreate) return json;
-
-  if (json.ok === false) {
-    throw new Error(json.error || 'Errore script');
+  function formatOre(minuti) {
+    var m = Math.max(0, Math.round(minuti || 0));
+    var h = Math.floor(m / 60);
+    var mm = m % 60;
+    return h + 'h ' + String(mm).padStart(2, '0') + 'm';
   }
 
-  return json;
-}
+  function toast(msg, type) {
+    var c = document.getElementById('toast');
+    var d = document.createElement('div');
+    d.className = 'px-4 py-2 rounded-xl text-xs font-medium text-white shadow-lg max-w-sm ' +
+      (type === 'error' ? 'bg-rose-600' : type === 'success' ? 'bg-emerald-600' : 'bg-slate-800');
+    d.textContent = msg;
+    c.appendChild(d);
+    setTimeout(function () { d.remove(); }, 4500);
+  }
 
-async function onCard(uid) {
-  if (!uid || busy) return;
-  uid = String(uid).toUpperCase().replace(/\s+/g, '');
-  document.getElementById('last-uid').textContent = uid;
-  pendingUid = uid;
-  busy = true;
-  document.getElementById('create-box').classList.add('hidden');
+  function escapeHtml(s) {
+    return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
 
-  try {
-    var r = await apiCall({
-      action: 'timbra',
-      uid: uid,
-      operatore: loggedUserName || 'NFC'
+  async function apiCall(payload) {
+    var params = new URLSearchParams();
+    Object.keys(payload || {}).forEach(function (k) {
+      var v = payload[k];
+      if (v !== undefined && v !== null && v !== '') params.set(k, String(v));
     });
+    var url = SCRIPT_URL + (SCRIPT_URL.indexOf('?') >= 0 ? '&' : '?') + params.toString();
+    console.log('API URL:', url);
 
-    console.log('API JSON:', r);
-
-    if (r.needCreate) {
-      document.getElementById('new-uid').textContent = uid;
-      document.getElementById('new-name').value = '';
-      document.getElementById('create-box').classList.remove('hidden');
-      toast('Tessera nuova: inserisci il nome', 'info');
-      return;
+    var res;
+    try {
+      res = await fetch(url, {
+        method: 'GET',
+        redirect: 'follow',
+        cache: 'no-cache',
+        credentials: 'omit'
+      });
+    } catch (e) {
+      throw new Error('Connessione fallita. Usa http://localhost (non file://)');
     }
 
-    var t = r.timbratura;
-    if (!t) {
-      // se il foglio ha ricevuto il dato ma manca il campo, non bloccare
-      toast('Timbratura OK (senza dettaglio risposta)', 'success');
+    var text = await res.text();
+    console.log('API RAW:', text);
+
+    if (!text || text.trim().charAt(0) === '<') {
+      throw new Error('Risposta non JSON dallo script');
+    }
+
+    var json = JSON.parse(text);
+
+    // tessera nuova: non è errore
+    if (json.needCreate) return json;
+
+    if (json.ok === false) {
+      throw new Error(json.error || 'Errore script');
+    }
+    return json;
+  }
+
+  window.addEventListener('DOMContentLoaded', function () {
+    // A ogni apertura chiedi login
+    sessionStorage.removeItem('nfc_timb_user');
+    loggedUserName = '';
+
+    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      document.documentElement.classList.add('dark');
+    }
+
+    var now = new Date();
+    var sel = document.getElementById('f-mese');
+    var mesi = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+    for (var i = 1; i <= 12; i++) {
+      var o = document.createElement('option');
+      o.value = String(i);
+      o.textContent = mesi[i - 1];
+      if (i === now.getMonth() + 1) o.selected = true;
+      sel.appendChild(o);
+    }
+    document.getElementById('f-anno').value = String(now.getFullYear());
+
+    document.getElementById('login-overlay').classList.remove('hidden');
+    document.getElementById('app').classList.add('hidden');
+  });
+
+  async function handleLogin(e) {
+    e.preventDefault();
+    var u = document.getElementById('username').value.trim().toLowerCase();
+    var p = document.getElementById('password').value.trim();
+    var err = document.getElementById('login-error');
+    err.classList.add('hidden');
+    if (!u || !p) {
+      err.textContent = 'Inserisci username e password';
+      err.classList.remove('hidden');
+      return;
+    }
+    try {
+      var q = LOGIN_URL + (LOGIN_URL.indexOf('?') >= 0 ? '&' : '?') +
+        'action=login&username=' + encodeURIComponent(u) +
+        '&password=' + encodeURIComponent(p);
+      var res = await fetch(q, { method: 'GET', redirect: 'follow', cache: 'no-cache', credentials: 'omit' });
+      var text = await res.text();
+      var json = null;
+      try { json = JSON.parse(text); } catch (e2) {}
+      if (json && json.ok) {
+        loggedUserName = json.user || (u.charAt(0).toUpperCase() + u.slice(1));
+        sessionStorage.setItem('nfc_timb_user', loggedUserName);
+        document.getElementById('login-overlay').classList.add('hidden');
+        document.getElementById('app').classList.remove('hidden');
+        document.getElementById('logged-username').textContent = loggedUserName;
+        toast('Ciao ' + loggedUserName, 'success');
+        connectWs();
+        loadDipendenti();
+        loadTurni();
+      } else {
+        err.textContent = 'Credenziali non valide';
+        err.classList.remove('hidden');
+      }
+    } catch (e3) {
+      err.textContent = 'Errore connessione login';
+      err.classList.remove('hidden');
+    }
+  }
+
+  function handleLogout() {
+    sessionStorage.removeItem('nfc_timb_user');
+    loggedUserName = '';
+    if (ws) try { ws.close(); } catch (e) {}
+    document.getElementById('username').value = '';
+    document.getElementById('password').value = '';
+    document.getElementById('app').classList.add('hidden');
+    document.getElementById('login-overlay').classList.remove('hidden');
+  }
+
+  async function loadDipendenti() {
+    try {
+      var r = await apiCall({ action: 'listDipendenti' });
+      var list = r.dipendenti || [];
+      var body = document.getElementById('dip-body');
+      if (!list.length) {
+        body.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-400">Nessun dipendente</td></tr>';
+        return;
+      }
+      body.innerHTML = list.map(function (d) {
+        var rowClass = d.presente ? 'bg-emerald-50 dark:bg-emerald-950/30' : '';
+        var stato = d.presente
+          ? '<span class="px-2 py-0.5 rounded-lg bg-emerald-600 text-white text-[10px] font-bold">IN</span>'
+          : '<span class="px-2 py-0.5 rounded-lg bg-slate-200 text-slate-600 text-[10px] font-bold">OUT</span>';
+        var arrivo = d.presente ? roundTo15(d.oraArrivo) : '—';
+        return '<tr class="' + rowClass + '"><td class="p-2.5">' + stato +
+          '</td><td class="p-2.5 font-semibold">' + escapeHtml(d.nome) +
+          '</td><td class="p-2.5 font-mono">' + escapeHtml(arrivo) +
+          '</td><td class="p-2.5 font-mono text-[10px]">' + escapeHtml(d.uid) + '</td></tr>';
+      }).join('');
+    } catch (err) {
+      console.error(err);
+      toast(err.message || 'Errore dipendenti', 'error');
+    }
+  }
+
+  async function loadTurni() {
+    try {
+      var r = await apiCall({
+        action: 'listTimbrature',
+        mese: document.getElementById('f-mese').value,
+        anno: document.getElementById('f-anno').value,
+        nome: document.getElementById('f-nome').value.trim()
+      });
+      var turni = (r.turni && r.turni.dettagli) || [];
+      var tot = (r.turni && r.turni.totaliMese) || [];
+      var tb = document.getElementById('turni-body');
+      if (!turni.length) {
+        tb.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400">Nessun turno nel periodo</td></tr>';
+      } else {
+        tb.innerHTML = turni.map(function (t) {
+          return '<tr><td class="p-2.5 font-semibold">' + escapeHtml(t.nome) +
+            '</td><td class="p-2.5">' + escapeHtml(t.dataIn) +
+            '</td><td class="p-2.5 font-mono">' + escapeHtml(roundTo15(t.oraIn)) +
+            '</td><td class="p-2.5">' + escapeHtml(t.dataOut) +
+            '</td><td class="p-2.5 font-mono">' + escapeHtml(roundTo15(t.oraOut)) +
+            '</td><td class="p-2.5 font-semibold">' + formatOre(t.minuti) + '</td></tr>';
+        }).join('');
+      }
+      var totb = document.getElementById('tot-body');
+      totb.innerHTML = tot.length
+        ? tot.map(function (t) {
+            return '<tr><td class="p-2.5 font-semibold">' + escapeHtml(t.nome) +
+              '</td><td class="p-2.5 font-bold text-indigo-600">' + formatOre(t.minuti) + '</td></tr>';
+          }).join('')
+        : '<tr><td colspan="2" class="p-3 text-center text-slate-400">—</td></tr>';
+    } catch (err) {
+      console.error(err);
+      toast(err.message || 'Errore turni', 'error');
+    }
+  }
+
+  async function onCard(uid) {
+    if (!uid || busy) return;
+    uid = String(uid).toUpperCase().replace(/\s+/g, '');
+    document.getElementById('last-uid').textContent = uid;
+    pendingUid = uid;
+    busy = true;
+    document.getElementById('create-box').classList.add('hidden');
+
+    try {
+      var r = await apiCall({
+        action: 'timbra',
+        uid: uid,
+        operatore: loggedUserName || 'NFC'
+      });
+      console.log('API JSON:', r);
+
+      if (r.needCreate) {
+        document.getElementById('new-uid').textContent = uid;
+        document.getElementById('new-name').value = '';
+        document.getElementById('create-box').classList.remove('hidden');
+        toast('Tessera nuova: inserisci il nome', 'info');
+        return;
+      }
+
+      var t = r.timbratura;
+      if (!t) {
+        toast('Timbratura OK (senza dettaglio risposta)', 'success');
+        loadDipendenti();
+        loadTurni();
+        return;
+      }
+
+      var tipo = String(t.tipo || '').toUpperCase();
+      var oraR = roundTo15(t.ora || '');
+      document.getElementById('live-msg').textContent =
+        (tipo === 'IN' ? '🟢 INGRESSO' : '🔴 USCITA') + ' — ' + (t.nome || '') +
+        (oraR !== '—' ? ' alle ' + oraR : '');
+      toast((t.nome || '') + ' → ' + tipo + ' ' + oraR, 'success');
       loadDipendenti();
       loadTurni();
-      return;
+    } catch (err) {
+      console.error(err);
+      toast(err.message || 'Errore timbratura', 'error');
+    } finally {
+      busy = false;
     }
-
-    var tipo = String(t.tipo || '').toUpperCase();
-    var oraR = roundTo15(t.ora || '');
-    document.getElementById('live-msg').textContent =
-      (tipo === 'IN' ? '🟢 INGRESSO' : '🔴 USCITA') + ' — ' + (t.nome || '') +
-      (oraR !== '—' ? ' alle ' + oraR : '');
-    toast((t.nome || '') + ' → ' + tipo + ' ' + oraR, 'success');
-    loadDipendenti();
-    loadTurni();
-  } catch (err) {
-    console.error(err);
-    toast(err.message || 'Errore timbratura', 'error');
-  } finally {
-    busy = false;
   }
-}
 
-async function creaETimbra() {
-  var nome = document.getElementById('new-name').value.trim();
-  if (!nome) { toast('Inserisci il nome', 'error'); return; }
-  if (!pendingUid) return;
-  busy = true;
-  try {
-    var r = await apiCall({
-      action: 'timbra',
-      uid: pendingUid,
-      nome: nome,
-      tipo: 'IN',
-      operatore: loggedUserName || 'NFC'
-    });
-    var t = r.timbratura;
-    document.getElementById('create-box').classList.add('hidden');
-    if (t) {
-      document.getElementById('live-msg').textContent =
-        '🟢 INGRESSO — ' + t.nome + ' alle ' + roundTo15(t.ora || '');
-      toast('Creato ' + t.nome + ' + IN', 'success');
-    } else {
-      toast('Dipendente salvato', 'success');
+  async function creaETimbra() {
+    var nome = document.getElementById('new-name').value.trim();
+    if (!nome) { toast('Inserisci il nome', 'error'); return; }
+    if (!pendingUid) return;
+    busy = true;
+    try {
+      var r = await apiCall({
+        action: 'timbra',
+        uid: pendingUid,
+        nome: nome,
+        tipo: 'IN',
+        operatore: loggedUserName || 'NFC'
+      });
+      var t = r.timbratura;
+      document.getElementById('create-box').classList.add('hidden');
+      if (t) {
+        document.getElementById('live-msg').textContent =
+          '🟢 INGRESSO — ' + t.nome + ' alle ' + roundTo15(t.ora || '');
+        toast('Creato ' + t.nome + ' + IN', 'success');
+      } else {
+        toast('Dipendente salvato', 'success');
+      }
+      loadDipendenti();
+      loadTurni();
+    } catch (err) {
+      console.error(err);
+      toast(err.message || 'Errore', 'error');
+    } finally {
+      busy = false;
     }
-    loadDipendenti();
-    loadTurni();
-  } catch (err) {
-    console.error(err);
-    toast(err.message || 'Errore', 'error');
-  } finally {
-    busy = false;
   }
-}
+
+  function setWsStatus(on) {
+    var el = document.getElementById('ws-status');
+    el.textContent = on ? 'Bridge ON' : 'Bridge OFF';
+    el.className = 'px-2.5 py-1 text-[11px] font-semibold rounded-lg border ' + (on
+      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+      : 'bg-rose-50 text-rose-600 border-rose-200');
+  }
+
+  function connectWs() {
+    try {
+      if (ws) try { ws.close(); } catch (e) {}
+      ws = new WebSocket(WS_URL);
+      ws.onopen = function () { setWsStatus(true); };
+      ws.onclose = function () {
+        setWsStatus(false);
+        if (loggedUserName) setTimeout(connectWs, 3000);
+      };
+      ws.onerror = function () { setWsStatus(false); };
+      ws.onmessage = function (ev) {
+        try {
+          var data = JSON.parse(ev.data);
+          if (data.event === 'card' && data.uid) onCard(data.uid);
+          else if (data.uid) onCard(data.uid);
+        } catch (e) {}
+      };
+    } catch (e) {
+      setWsStatus(false);
+    }
+  }
+</script>
+</body>
+</html>
