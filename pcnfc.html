@@ -227,33 +227,32 @@
     }
   }
 
-  async function handleLogin(e) {
-    e.preventDefault();
-    var u = document.getElementById('username').value.trim().toLowerCase();
-    var p = document.getElementById('password').value.trim();
-    var err = document.getElementById('login-error');
-    err.classList.add('hidden');
-    try {
-      var q = LOGIN_URL + (LOGIN_URL.indexOf('?') >= 0 ? '&' : '?') + 'action=login&username=' + encodeURIComponent(u) + '&password=' + encodeURIComponent(p);
-      var res = await fetch(q, { method: 'GET', redirect: 'follow', cache: 'no-cache' });
-      var text = await res.text();
-      var json = null;
-      try { json = JSON.parse(text); } catch (e2) {}
-      if (json && json.ok) {
-        var display = json.user || (u.charAt(0).toUpperCase() + u.slice(1));
-        sessionStorage.setItem('nfc_timb_user', display);
-        checkAuth();
-        toast('Ciao ' + display, 'success');
-      } else {
-        err.textContent = 'Credenziali non valide';
-        err.classList.remove('hidden');
-      }
-    } catch (e3) {
-      err.textContent = 'Errore connessione';
-      err.classList.remove('hidden');
+ async function apiPost(payload) {
+  // Tutti i campi in query string (non si perdono col redirect di Apps Script)
+  const params = new URLSearchParams();
+  Object.keys(payload || {}).forEach(function (k) {
+    if (payload[k] !== undefined && payload[k] !== null && payload[k] !== '') {
+      params.set(k, String(payload[k]));
     }
-  }
+  });
 
+  const url = SCRIPT_URL + (SCRIPT_URL.indexOf('?') >= 0 ? '&' : '?') + params.toString();
+
+  const res = await fetch(url, {
+    method: 'GET',
+    redirect: 'follow',
+    cache: 'no-cache'
+  });
+
+  const text = await res.text();
+  let json;
+  try {
+    json = JSON.parse(text);
+  } catch (e) {
+    throw new Error('Risposta non valida: ' + text.substring(0, 120));
+  }
+  return json;
+}
   function handleLogout() {
     sessionStorage.removeItem('nfc_timb_user');
     checkAuth();
