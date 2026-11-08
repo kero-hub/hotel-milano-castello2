@@ -14,17 +14,17 @@
 </head>
 <body class="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100">
 
-<div id="toast" class="fixed top-4 right-4 z-50 space-y-2"></div>
+<div id="toast" class="fixed top-4 right-4 z-[60] space-y-2"></div>
 
-<!-- LOGIN -->
-<div id="login-overlay" class="fixed inset-0 z-50 bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4">
+<!-- LOGIN: sempre sopra all'apertura -->
+<div id="login-overlay" class="fixed inset-0 z-50 bg-slate-900/95 backdrop-blur-md flex items-center justify-center p-4">
   <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 w-full max-w-md p-6 sm:p-8">
     <div class="text-center mb-6">
       <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-500 to-indigo-600 flex items-center justify-center text-white mx-auto mb-4">
         <i class="fa-solid fa-id-card-clip text-2xl"></i>
       </div>
       <h2 class="text-xl font-bold">Alloggiato KM Manager</h2>
-      <p class="text-xs text-slate-500 mt-1">Timbrature NFC — Accedi con le tue credenziali</p>
+      <p class="text-xs text-slate-500 mt-1">Timbrature NFC — Inserisci username e password</p>
     </div>
     <form onsubmit="handleLogin(event)" class="space-y-4">
       <div>
@@ -67,12 +67,11 @@
   </header>
 
   <main class="max-w-5xl mx-auto px-4 py-6 space-y-5">
-
     <section class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 shadow-sm">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 class="text-base font-bold">Avvicina il cartellino all’ACR122</h1>
-          <p class="text-xs text-slate-500">Orari arrotondati ai 15 minuti · Avvia <code>nfc_bridge.py</code> sul PC</p>
+          <p class="text-xs text-slate-500">Orari arrotondati ai 15 minuti · Avvia nfc_bridge.py sul PC</p>
         </div>
         <div class="text-sm">UID: <span id="last-uid" class="font-mono font-semibold">—</span></div>
       </div>
@@ -102,7 +101,7 @@
             </tr>
           </thead>
           <tbody id="dip-body" class="divide-y divide-slate-100 dark:divide-slate-700/50">
-            <tr><td colspan="4" class="p-4 text-center text-slate-400">Caricamento...</td></tr>
+            <tr><td colspan="4" class="p-4 text-center text-slate-400">—</td></tr>
           </tbody>
         </table>
       </div>
@@ -118,7 +117,6 @@
           <button type="button" onclick="loadTurni()" class="px-3 py-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg">Filtra</button>
         </div>
       </div>
-
       <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700 mb-4">
         <table class="w-full text-left text-xs">
           <thead>
@@ -132,11 +130,10 @@
             </tr>
           </thead>
           <tbody id="turni-body" class="divide-y divide-slate-100 dark:divide-slate-700/50">
-            <tr><td colspan="6" class="p-4 text-center text-slate-400">Caricamento...</td></tr>
+            <tr><td colspan="6" class="p-4 text-center text-slate-400">—</td></tr>
           </tbody>
         </table>
       </div>
-
       <h3 class="text-xs font-bold text-slate-500 uppercase mb-2">Totali mese</h3>
       <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
         <table class="w-full text-left text-xs">
@@ -200,50 +197,42 @@
   }
 
   function escapeHtml(s) {
-    return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
-  /** Chiamate Apps Script via GET (evita perdita body su redirect) */
   async function apiCall(payload) {
-    if (!SCRIPT_URL || SCRIPT_URL.indexOf('http') !== 0) {
-      throw new Error('SCRIPT_URL non configurato');
-    }
     var params = new URLSearchParams();
     Object.keys(payload || {}).forEach(function (k) {
       var v = payload[k];
       if (v !== undefined && v !== null && v !== '') params.set(k, String(v));
     });
     var url = SCRIPT_URL + (SCRIPT_URL.indexOf('?') >= 0 ? '&' : '?') + params.toString();
-
     var res;
     try {
-      res = await fetch(url, {
-        method: 'GET',
-        redirect: 'follow',
-        cache: 'no-cache',
-        credentials: 'omit'
-      });
+      res = await fetch(url, { method: 'GET', redirect: 'follow', cache: 'no-cache', credentials: 'omit' });
     } catch (netErr) {
-      throw new Error('Connessione fallita. Apri la pagina da http://localhost (non file://). ' + (netErr.message || ''));
+      throw new Error('Connessione fallita. Usa http://localhost non file://');
     }
-
     var text = await res.text();
     if (!text || text.trim().charAt(0) === '<') {
-      throw new Error('Risposta non JSON dallo script. Controlla distribuzione App Web (Chiunque).');
+      throw new Error('Risposta non JSON dallo script');
     }
     var json;
-    try {
-      json = JSON.parse(text);
-    } catch (e) {
-      throw new Error('JSON non valido: ' + text.substring(0, 120));
+    try { json = JSON.parse(text); } catch (e) {
+      throw new Error('JSON non valido: ' + text.substring(0, 100));
     }
-    if (json.ok === false) {
+    // needCreate non è un errore fatale
+    if (json.ok === false && !json.needCreate) {
       throw new Error(json.error || 'Errore script');
     }
     return json;
   }
 
   window.addEventListener('DOMContentLoaded', function () {
+    // A ogni apertura: chiedi sempre login (niente accesso automatico)
+    sessionStorage.removeItem('nfc_timb_user');
+    loggedUserName = '';
+
     if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
       document.documentElement.classList.add('dark');
     }
@@ -258,24 +247,11 @@
       sel.appendChild(o);
     }
     document.getElementById('f-anno').value = String(now.getFullYear());
-    checkAuth();
-  });
 
-  function checkAuth() {
-    var u = sessionStorage.getItem('nfc_timb_user');
-    if (u) {
-      loggedUserName = u;
-      document.getElementById('login-overlay').classList.add('hidden');
-      document.getElementById('app').classList.remove('hidden');
-      document.getElementById('logged-username').textContent = u;
-      connectWs();
-      loadDipendenti();
-      loadTurni();
-    } else {
-      document.getElementById('login-overlay').classList.remove('hidden');
-      document.getElementById('app').classList.add('hidden');
-    }
-  }
+    // mostra login, nascondi app
+    document.getElementById('login-overlay').classList.remove('hidden');
+    document.getElementById('app').classList.add('hidden');
+  });
 
   async function handleLogin(e) {
     e.preventDefault();
@@ -283,6 +259,11 @@
     var p = document.getElementById('password').value.trim();
     var err = document.getElementById('login-error');
     err.classList.add('hidden');
+    if (!u || !p) {
+      err.textContent = 'Inserisci username e password';
+      err.classList.remove('hidden');
+      return;
+    }
     try {
       var q = LOGIN_URL + (LOGIN_URL.indexOf('?') >= 0 ? '&' : '?') +
         'action=login&username=' + encodeURIComponent(u) +
@@ -292,10 +273,15 @@
       var json = null;
       try { json = JSON.parse(text); } catch (e2) {}
       if (json && json.ok) {
-        var display = json.user || (u.charAt(0).toUpperCase() + u.slice(1));
-        sessionStorage.setItem('nfc_timb_user', display);
-        checkAuth();
-        toast('Ciao ' + display, 'success');
+        loggedUserName = json.user || (u.charAt(0).toUpperCase() + u.slice(1));
+        sessionStorage.setItem('nfc_timb_user', loggedUserName);
+        document.getElementById('login-overlay').classList.add('hidden');
+        document.getElementById('app').classList.remove('hidden');
+        document.getElementById('logged-username').textContent = loggedUserName;
+        toast('Ciao ' + loggedUserName, 'success');
+        connectWs();
+        loadDipendenti();
+        loadTurni();
       } else {
         err.textContent = 'Credenziali non valide';
         err.classList.remove('hidden');
@@ -310,7 +296,10 @@
     sessionStorage.removeItem('nfc_timb_user');
     loggedUserName = '';
     if (ws) try { ws.close(); } catch (e) {}
-    checkAuth();
+    document.getElementById('username').value = '';
+    document.getElementById('password').value = '';
+    document.getElementById('app').classList.add('hidden');
+    document.getElementById('login-overlay').classList.remove('hidden');
   }
 
   async function loadDipendenti() {
@@ -319,7 +308,7 @@
       var list = r.dipendenti || [];
       var body = document.getElementById('dip-body');
       if (!list.length) {
-        body.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-400">Nessun dipendente registrato</td></tr>';
+        body.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-400">Nessun dipendente</td></tr>';
         return;
       }
       body.innerHTML = list.map(function (d) {
@@ -328,17 +317,14 @@
           ? '<span class="px-2 py-0.5 rounded-lg bg-emerald-600 text-white text-[10px] font-bold">IN</span>'
           : '<span class="px-2 py-0.5 rounded-lg bg-slate-200 text-slate-600 text-[10px] font-bold">OUT</span>';
         var arrivo = d.presente ? roundTo15(d.oraArrivo) : '—';
-        return '<tr class="' + rowClass + '">' +
-          '<td class="p-2.5">' + stato + '</td>' +
-          '<td class="p-2.5 font-semibold">' + escapeHtml(d.nome) + '</td>' +
-          '<td class="p-2.5 font-mono">' + escapeHtml(arrivo) + '</td>' +
-          '<td class="p-2.5 font-mono text-[10px]">' + escapeHtml(d.uid) + '</td></tr>';
+        return '<tr class="' + rowClass + '"><td class="p-2.5">' + stato +
+          '</td><td class="p-2.5 font-semibold">' + escapeHtml(d.nome) +
+          '</td><td class="p-2.5 font-mono">' + escapeHtml(arrivo) +
+          '</td><td class="p-2.5 font-mono text-[10px]">' + escapeHtml(d.uid) + '</td></tr>';
       }).join('');
     } catch (err) {
       console.error(err);
       toast(err.message || 'Errore dipendenti', 'error');
-      document.getElementById('dip-body').innerHTML =
-        '<tr><td colspan="4" class="p-4 text-center text-rose-500">' + escapeHtml(err.message || 'Errore') + '</td></tr>';
     }
   }
 
@@ -357,29 +343,24 @@
         tb.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400">Nessun turno nel periodo</td></tr>';
       } else {
         tb.innerHTML = turni.map(function (t) {
-          return '<tr>' +
-            '<td class="p-2.5 font-semibold">' + escapeHtml(t.nome) + '</td>' +
-            '<td class="p-2.5">' + escapeHtml(t.dataIn) + '</td>' +
-            '<td class="p-2.5 font-mono">' + escapeHtml(roundTo15(t.oraIn)) + '</td>' +
-            '<td class="p-2.5">' + escapeHtml(t.dataOut) + '</td>' +
-            '<td class="p-2.5 font-mono">' + escapeHtml(roundTo15(t.oraOut)) + '</td>' +
-            '<td class="p-2.5 font-semibold">' + formatOre(t.minuti) + '</td></tr>';
+          return '<tr><td class="p-2.5 font-semibold">' + escapeHtml(t.nome) +
+            '</td><td class="p-2.5">' + escapeHtml(t.dataIn) +
+            '</td><td class="p-2.5 font-mono">' + escapeHtml(roundTo15(t.oraIn)) +
+            '</td><td class="p-2.5">' + escapeHtml(t.dataOut) +
+            '</td><td class="p-2.5 font-mono">' + escapeHtml(roundTo15(t.oraOut)) +
+            '</td><td class="p-2.5 font-semibold">' + formatOre(t.minuti) + '</td></tr>';
         }).join('');
       }
       var totb = document.getElementById('tot-body');
-      if (!tot.length) {
-        totb.innerHTML = '<tr><td colspan="2" class="p-3 text-center text-slate-400">—</td></tr>';
-      } else {
-        totb.innerHTML = tot.map(function (t) {
-          return '<tr><td class="p-2.5 font-semibold">' + escapeHtml(t.nome) +
-            '</td><td class="p-2.5 font-bold text-indigo-600">' + formatOre(t.minuti) + '</td></tr>';
-        }).join('');
-      }
+      totb.innerHTML = tot.length
+        ? tot.map(function (t) {
+            return '<tr><td class="p-2.5 font-semibold">' + escapeHtml(t.nome) +
+              '</td><td class="p-2.5 font-bold text-indigo-600">' + formatOre(t.minuti) + '</td></tr>';
+          }).join('')
+        : '<tr><td colspan="2" class="p-3 text-center text-slate-400">—</td></tr>';
     } catch (err) {
       console.error(err);
       toast(err.message || 'Errore turni', 'error');
-      document.getElementById('turni-body').innerHTML =
-        '<tr><td colspan="6" class="p-4 text-center text-rose-500">' + escapeHtml(err.message || 'Errore') + '</td></tr>';
     }
   }
 
@@ -396,6 +377,8 @@
         uid: uid,
         operatore: loggedUserName || 'NFC'
       });
+
+      // Tessera nuova
       if (r.needCreate) {
         document.getElementById('new-uid').textContent = uid;
         document.getElementById('new-name').value = '';
@@ -403,11 +386,14 @@
         toast('Tessera nuova: inserisci il nome', 'info');
         return;
       }
+
       var t = r.timbratura;
-      var oraR = roundTo15(t.ora);
+      if (!t) throw new Error('Risposta timbratura incompleta');
+
+      var oraR = roundTo15(t.ora || '');
       document.getElementById('live-msg').textContent =
-        (t.tipo === 'IN' ? '🟢 INGRESSO' : '🔴 USCITA') + ' — ' + t.nome + ' alle ' + oraR + ' (arrotondato)';
-      toast(t.nome + ' → ' + t.tipo + ' ' + oraR, 'success');
+        (t.tipo === 'IN' ? '🟢 INGRESSO' : '🔴 USCITA') + ' — ' + (t.nome || '') + ' alle ' + oraR;
+      toast((t.nome || '') + ' → ' + (t.tipo || '') + ' ' + oraR, 'success');
       loadDipendenti();
       loadTurni();
     } catch (err) {
@@ -431,10 +417,11 @@
         tipo: 'IN',
         operatore: loggedUserName || 'NFC'
       });
-      document.getElementById('create-box').classList.add('hidden');
       var t = r.timbratura;
+      if (!t) throw new Error('Creazione non riuscita');
+      document.getElementById('create-box').classList.add('hidden');
       document.getElementById('live-msg').textContent =
-        '🟢 INGRESSO — ' + t.nome + ' (nuovo) alle ' + roundTo15(t.ora);
+        '🟢 INGRESSO — ' + t.nome + ' (nuovo) alle ' + roundTo15(t.ora || '');
       toast('Creato ' + t.nome + ' + IN', 'success');
       loadDipendenti();
       loadTurni();
@@ -448,7 +435,6 @@
 
   function setWsStatus(on) {
     var el = document.getElementById('ws-status');
-    if (!el) return;
     el.textContent = on ? 'Bridge ON' : 'Bridge OFF';
     el.className = 'px-2.5 py-1 text-[11px] font-semibold rounded-lg border ' + (on
       ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
@@ -457,23 +443,19 @@
 
   function connectWs() {
     try {
-      if (ws) {
-        try { ws.close(); } catch (e) {}
-      }
+      if (ws) try { ws.close(); } catch (e) {}
       ws = new WebSocket(WS_URL);
       ws.onopen = function () { setWsStatus(true); };
       ws.onclose = function () {
         setWsStatus(false);
-        setTimeout(function () {
-          if (sessionStorage.getItem('nfc_timb_user')) connectWs();
-        }, 3000);
+        if (loggedUserName) setTimeout(connectWs, 3000);
       };
       ws.onerror = function () { setWsStatus(false); };
       ws.onmessage = function (ev) {
         try {
           var data = JSON.parse(ev.data);
           if (data.event === 'card' && data.uid) onCard(data.uid);
-          if (data.uid && !data.event) onCard(data.uid);
+          else if (data.uid) onCard(data.uid);
         } catch (e) {}
       };
     } catch (e) {
