@@ -158,7 +158,7 @@
 
 <script>
   const LOGIN_URL = 'https://script.google.com/macros/s/AKfycbxJpJZmw3Yr2odzTh-bmUpTqRPbKu2z_8hT0WbZ3ig-Rn5iopRxXLjuqTGaxSeYifhJ/exec';
-  const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwgeaYGpsShHBoLHycMA3zkgdawZ4w-TSyZZ4Z5tM_8W_pzN79XciSLiGpjBV_U66Mf/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwgeaYGpsShHBoLHycMA3zkgdawZ4w-TSyZZ4Z5tM_8W_pzN79XciSLiGpjBV_U66Mf/exec';
   const WS_URL = 'ws://127.0.0.1:8765';
 
   let loggedUserName = '';
@@ -200,44 +200,37 @@
     return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
-  async function apiCall(payload) {
-    var params = new URLSearchParams();
-    Object.keys(payload || {}).forEach(function (k) {
-      var v = payload[k];
-      if (v !== undefined && v !== null && v !== '') params.set(k, String(v));
-    });
-    var url = SCRIPT_URL + (SCRIPT_URL.indexOf('?') >= 0 ? '&' : '?') + params.toString();
-    console.log('API URL:', url);
+async function apiCall(payload) {
+  var params = new URLSearchParams();
+  Object.keys(payload || {}).forEach(function (k) {
+    var v = payload[k];
+    if (v !== undefined && v !== null && v !== '') params.set(k, String(v));
+  });
+  // evita risposte vecchie in cache
+  params.set('_ts', String(Date.now()));
 
-    var res;
-    try {
-      res = await fetch(url, {
-        method: 'GET',
-        redirect: 'follow',
-        cache: 'no-cache',
-        credentials: 'omit'
-      });
-    } catch (e) {
-      throw new Error('Connessione fallita. Usa http://localhost (non file://)');
-    }
+  var url = SCRIPT_URL + (SCRIPT_URL.indexOf('?') >= 0 ? '&' : '?') + params.toString();
+  console.log('API URL:', url);
 
-    var text = await res.text();
-    console.log('API RAW:', text);
+  var res = await fetch(url, {
+    method: 'GET',
+    redirect: 'follow',
+    cache: 'no-store',
+    credentials: 'omit'
+  });
 
-    if (!text || text.trim().charAt(0) === '<') {
-      throw new Error('Risposta non JSON dallo script');
-    }
+  var text = await res.text();
+  console.log('API RAW:', text);
 
-    var json = JSON.parse(text);
-
-    // tessera nuova: non è errore
-    if (json.needCreate) return json;
-
-    if (json.ok === false) {
-      throw new Error(json.error || 'Errore script');
-    }
-    return json;
+  if (!text || text.trim().charAt(0) === '<') {
+    throw new Error('Risposta non JSON dallo script');
   }
+
+  var json = JSON.parse(text);
+  if (json.needCreate) return json;
+  if (json.ok === false) throw new Error(json.error || 'Errore script');
+  return json;
+}
 
   window.addEventListener('DOMContentLoaded', function () {
     // A ogni apertura chiedi login
