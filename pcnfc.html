@@ -5,7 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Timbrature NFC · Alloggiato KM Manager</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script>tailwind.config={darkMode:'class',theme:{extend:{fontFamily:{sans:['Inter','sans-serif']}}}}</script>
+  <script>
+    tailwind.config = { darkMode: 'class', theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } } } }
+  </script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>body{font-family:Inter,sans-serif}</style>
@@ -22,19 +24,19 @@
         <i class="fa-solid fa-id-card-clip text-2xl"></i>
       </div>
       <h2 class="text-xl font-bold">Alloggiato KM Manager</h2>
-      <p class="text-xs text-slate-500 mt-1">Timbrature NFC — Accedi</p>
+      <p class="text-xs text-slate-500 mt-1">Timbrature NFC — Accedi con le tue credenziali</p>
     </div>
     <form onsubmit="handleLogin(event)" class="space-y-4">
       <div>
         <label class="block text-xs font-semibold mb-1">Username</label>
-        <input id="username" required class="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs">
+        <input id="username" required autocomplete="username" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs">
       </div>
       <div>
         <label class="block text-xs font-semibold mb-1">Password</label>
-        <input id="password" type="password" required class="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs">
+        <input id="password" type="password" required autocomplete="current-password" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs">
       </div>
       <div id="login-error" class="hidden text-xs text-rose-600 text-center font-medium"></div>
-      <button class="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold rounded-xl">Accedi</button>
+      <button type="submit" class="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold rounded-xl">Accedi</button>
     </form>
   </div>
 </div>
@@ -51,11 +53,14 @@
           <div class="text-xs text-slate-500">Timbrature NFC · Hotel Milano Castello</div>
         </div>
       </div>
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2 flex-wrap">
         <span id="ws-status" class="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-rose-50 text-rose-600 border border-rose-200">Bridge OFF</span>
         <span class="px-2.5 py-1 text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 rounded-lg">
           <i class="fa-solid fa-user-check"></i> <span id="logged-username">Utente</span>
         </span>
+        <button type="button" onclick="document.documentElement.classList.toggle('dark')" class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-xs">
+          <i class="fa-solid fa-moon dark:hidden"></i><i class="fa-solid fa-sun hidden dark:inline"></i>
+        </button>
         <button type="button" onclick="handleLogout()" class="px-3 py-2 text-xs font-semibold text-rose-600 bg-rose-50 rounded-lg">Esci</button>
       </div>
     </div>
@@ -63,31 +68,28 @@
 
   <main class="max-w-5xl mx-auto px-4 py-6 space-y-5">
 
-    <!-- Lettore -->
     <section class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 shadow-sm">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 class="text-base font-bold">Avvicina il cartellino all’ACR122</h1>
-          <p class="text-xs text-slate-500">Orari arrotondati ai 15 minuti · Python bridge attivo sul PC</p>
+          <p class="text-xs text-slate-500">Orari arrotondati ai 15 minuti · Avvia <code>nfc_bridge.py</code> sul PC</p>
         </div>
         <div class="text-sm">UID: <span id="last-uid" class="font-mono font-semibold">—</span></div>
       </div>
-      <div id="live-msg" class="mt-3 text-sm font-semibold text-slate-600"></div>
+      <div id="live-msg" class="mt-3 text-sm font-semibold text-slate-600 dark:text-slate-300"></div>
     </section>
 
-    <!-- Nuova tessera -->
-    <section id="create-box" class="hidden bg-amber-50 dark:bg-amber-950/30 border border-amber-200 rounded-2xl p-5">
-      <h2 class="text-sm font-bold mb-2">Tessera nuova — crea dipendente</h2>
+    <section id="create-box" class="hidden bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-2xl p-5">
+      <h2 class="text-sm font-bold mb-2 text-amber-800 dark:text-amber-200">Tessera nuova — crea dipendente</h2>
       <p class="text-xs mb-2">UID: <span id="new-uid" class="font-mono font-semibold"></span></p>
-      <input id="new-name" class="w-full px-3 py-2 rounded-xl border text-sm mb-3 bg-white dark:bg-slate-900" placeholder="Nome e cognome">
-      <button type="button" onclick="creaETimbra()" class="w-full py-2.5 bg-amber-500 text-white text-sm font-semibold rounded-xl">Salva e timbra IN</button>
+      <input id="new-name" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-600 text-sm mb-3 bg-white dark:bg-slate-900" placeholder="Nome e cognome">
+      <button type="button" onclick="creaETimbra()" class="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold rounded-xl">Salva e timbra IN</button>
     </section>
 
-    <!-- Dipendenti -->
     <section class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-5">
       <div class="flex items-center justify-between gap-2 mb-3">
         <h2 class="text-sm font-bold flex items-center gap-2"><i class="fa-solid fa-users text-amber-500"></i> Dipendenti</h2>
-        <button type="button" onclick="loadDipendenti()" class="px-3 py-1.5 text-xs font-semibold bg-indigo-600 text-white rounded-lg">Aggiorna</button>
+        <button type="button" onclick="loadDipendenti()" class="px-3 py-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg">Aggiorna</button>
       </div>
       <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
         <table class="w-full text-left text-xs">
@@ -95,24 +97,25 @@
             <tr class="bg-amber-500/10 text-amber-900 dark:text-amber-200 font-bold border-b border-amber-500/20">
               <th class="p-2.5">Stato</th>
               <th class="p-2.5">Nome</th>
-              <th class="p-2.5">Arrivo (arroton.)</th>
+              <th class="p-2.5">Arrivo (15 min)</th>
               <th class="p-2.5">UID</th>
             </tr>
           </thead>
-          <tbody id="dip-body" class="divide-y divide-slate-100 dark:divide-slate-700/50"></tbody>
+          <tbody id="dip-body" class="divide-y divide-slate-100 dark:divide-slate-700/50">
+            <tr><td colspan="4" class="p-4 text-center text-slate-400">Caricamento...</td></tr>
+          </tbody>
         </table>
       </div>
     </section>
 
-    <!-- Turni mese -->
     <section class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-5">
       <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
         <h2 class="text-sm font-bold flex items-center gap-2"><i class="fa-solid fa-table-list text-amber-500"></i> Turni del mese</h2>
         <div class="flex flex-wrap gap-2">
-          <select id="f-mese" class="px-2 py-1.5 rounded-lg border text-xs bg-white dark:bg-slate-900"></select>
-          <input id="f-anno" type="number" class="w-20 px-2 py-1.5 rounded-lg border text-xs bg-white dark:bg-slate-900">
-          <input id="f-nome" type="text" placeholder="Filtra nome..." class="px-2 py-1.5 rounded-lg border text-xs bg-white dark:bg-slate-900">
-          <button type="button" onclick="loadTurni()" class="px-3 py-1.5 text-xs font-semibold bg-indigo-600 text-white rounded-lg">Filtra</button>
+          <select id="f-mese" class="px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-xs bg-white dark:bg-slate-900"></select>
+          <input id="f-anno" type="number" class="w-20 px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-xs bg-white dark:bg-slate-900">
+          <input id="f-nome" type="text" placeholder="Filtra nome..." class="px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-xs bg-white dark:bg-slate-900">
+          <button type="button" onclick="loadTurni()" class="px-3 py-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg">Filtra</button>
         </div>
       </div>
 
@@ -128,7 +131,9 @@
               <th class="p-2.5">Ore turno</th>
             </tr>
           </thead>
-          <tbody id="turni-body" class="divide-y divide-slate-100 dark:divide-slate-700/50"></tbody>
+          <tbody id="turni-body" class="divide-y divide-slate-100 dark:divide-slate-700/50">
+            <tr><td colspan="6" class="p-4 text-center text-slate-400">Caricamento...</td></tr>
+          </tbody>
         </table>
       </div>
 
@@ -136,12 +141,14 @@
       <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
         <table class="w-full text-left text-xs">
           <thead>
-            <tr class="bg-indigo-500/10 font-bold border-b">
+            <tr class="bg-indigo-500/10 font-bold border-b border-slate-200 dark:border-slate-700">
               <th class="p-2.5">Dipendente</th>
               <th class="p-2.5">Ore totali mese</th>
             </tr>
           </thead>
-          <tbody id="tot-body"></tbody>
+          <tbody id="tot-body">
+            <tr><td colspan="2" class="p-3 text-center text-slate-400">—</td></tr>
+          </tbody>
         </table>
       </div>
     </section>
@@ -160,8 +167,8 @@
   let loggedUserName = '';
   let pendingUid = '';
   let busy = false;
+  let ws = null;
 
-  /** Arrotonda a 15 minuti: 14:13→14:15, 14:05→14:00, 14:07→14:00, 14:08→14:15 */
   function roundTo15(oraStr) {
     if (!oraStr) return '—';
     var p = String(oraStr).trim().split(':');
@@ -185,29 +192,72 @@
   function toast(msg, type) {
     var c = document.getElementById('toast');
     var d = document.createElement('div');
-    d.className = 'px-4 py-2 rounded-xl text-xs font-medium text-white shadow ' + (type === 'error' ? 'bg-rose-600' : type === 'success' ? 'bg-emerald-600' : 'bg-slate-800');
+    d.className = 'px-4 py-2 rounded-xl text-xs font-medium text-white shadow-lg max-w-sm ' +
+      (type === 'error' ? 'bg-rose-600' : type === 'success' ? 'bg-emerald-600' : 'bg-slate-800');
     d.textContent = msg;
     c.appendChild(d);
-    setTimeout(function () { d.remove(); }, 3500);
+    setTimeout(function () { d.remove(); }, 4500);
   }
 
   function escapeHtml(s) {
-    return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
-  // Login
+  /** Chiamate Apps Script via GET (evita perdita body su redirect) */
+  async function apiCall(payload) {
+    if (!SCRIPT_URL || SCRIPT_URL.indexOf('http') !== 0) {
+      throw new Error('SCRIPT_URL non configurato');
+    }
+    var params = new URLSearchParams();
+    Object.keys(payload || {}).forEach(function (k) {
+      var v = payload[k];
+      if (v !== undefined && v !== null && v !== '') params.set(k, String(v));
+    });
+    var url = SCRIPT_URL + (SCRIPT_URL.indexOf('?') >= 0 ? '&' : '?') + params.toString();
+
+    var res;
+    try {
+      res = await fetch(url, {
+        method: 'GET',
+        redirect: 'follow',
+        cache: 'no-cache',
+        credentials: 'omit'
+      });
+    } catch (netErr) {
+      throw new Error('Connessione fallita. Apri la pagina da http://localhost (non file://). ' + (netErr.message || ''));
+    }
+
+    var text = await res.text();
+    if (!text || text.trim().charAt(0) === '<') {
+      throw new Error('Risposta non JSON dallo script. Controlla distribuzione App Web (Chiunque).');
+    }
+    var json;
+    try {
+      json = JSON.parse(text);
+    } catch (e) {
+      throw new Error('JSON non valido: ' + text.substring(0, 120));
+    }
+    if (json.ok === false) {
+      throw new Error(json.error || 'Errore script');
+    }
+    return json;
+  }
+
   window.addEventListener('DOMContentLoaded', function () {
+    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      document.documentElement.classList.add('dark');
+    }
     var now = new Date();
     var sel = document.getElementById('f-mese');
     var mesi = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
     for (var i = 1; i <= 12; i++) {
       var o = document.createElement('option');
-      o.value = i;
+      o.value = String(i);
       o.textContent = mesi[i - 1];
       if (i === now.getMonth() + 1) o.selected = true;
       sel.appendChild(o);
     }
-    document.getElementById('f-anno').value = now.getFullYear();
+    document.getElementById('f-anno').value = String(now.getFullYear());
     checkAuth();
   });
 
@@ -227,55 +277,49 @@
     }
   }
 
- async function apiPost(payload) {
-  // Tutti i campi in query string (non si perdono col redirect di Apps Script)
-  const params = new URLSearchParams();
-  Object.keys(payload || {}).forEach(function (k) {
-    if (payload[k] !== undefined && payload[k] !== null && payload[k] !== '') {
-      params.set(k, String(payload[k]));
+  async function handleLogin(e) {
+    e.preventDefault();
+    var u = document.getElementById('username').value.trim().toLowerCase();
+    var p = document.getElementById('password').value.trim();
+    var err = document.getElementById('login-error');
+    err.classList.add('hidden');
+    try {
+      var q = LOGIN_URL + (LOGIN_URL.indexOf('?') >= 0 ? '&' : '?') +
+        'action=login&username=' + encodeURIComponent(u) +
+        '&password=' + encodeURIComponent(p);
+      var res = await fetch(q, { method: 'GET', redirect: 'follow', cache: 'no-cache', credentials: 'omit' });
+      var text = await res.text();
+      var json = null;
+      try { json = JSON.parse(text); } catch (e2) {}
+      if (json && json.ok) {
+        var display = json.user || (u.charAt(0).toUpperCase() + u.slice(1));
+        sessionStorage.setItem('nfc_timb_user', display);
+        checkAuth();
+        toast('Ciao ' + display, 'success');
+      } else {
+        err.textContent = 'Credenziali non valide';
+        err.classList.remove('hidden');
+      }
+    } catch (e3) {
+      err.textContent = 'Errore connessione login';
+      err.classList.remove('hidden');
     }
-  });
-
-  const url = SCRIPT_URL + (SCRIPT_URL.indexOf('?') >= 0 ? '&' : '?') + params.toString();
-
-  const res = await fetch(url, {
-    method: 'GET',
-    redirect: 'follow',
-    cache: 'no-cache'
-  });
-
-  const text = await res.text();
-  let json;
-  try {
-    json = JSON.parse(text);
-  } catch (e) {
-    throw new Error('Risposta non valida: ' + text.substring(0, 120));
   }
-  return json;
-}
+
   function handleLogout() {
     sessionStorage.removeItem('nfc_timb_user');
+    loggedUserName = '';
+    if (ws) try { ws.close(); } catch (e) {}
     checkAuth();
-  }
-
-  async function apiPost(payload) {
-    var res = await fetch(SCRIPT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(payload)
-    });
-    var text = await res.text();
-    try { return JSON.parse(text); } catch (e) { throw new Error('Risposta script non valida'); }
   }
 
   async function loadDipendenti() {
     try {
-      var r = await apiPost({ action: 'listDipendenti' });
-      if (!r.ok) throw new Error(r.error || 'Errore lista');
-      var body = document.getElementById('dip-body');
+      var r = await apiCall({ action: 'listDipendenti' });
       var list = r.dipendenti || [];
+      var body = document.getElementById('dip-body');
       if (!list.length) {
-        body.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-400">Nessun dipendente</td></tr>';
+        body.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-400">Nessun dipendente registrato</td></tr>';
         return;
       }
       body.innerHTML = list.map(function (d) {
@@ -291,20 +335,23 @@
           '<td class="p-2.5 font-mono text-[10px]">' + escapeHtml(d.uid) + '</td></tr>';
       }).join('');
     } catch (err) {
-      toast(err.message, 'error');
+      console.error(err);
+      toast(err.message || 'Errore dipendenti', 'error');
+      document.getElementById('dip-body').innerHTML =
+        '<tr><td colspan="4" class="p-4 text-center text-rose-500">' + escapeHtml(err.message || 'Errore') + '</td></tr>';
     }
   }
 
   async function loadTurni() {
-    var mese = document.getElementById('f-mese').value;
-    var anno = document.getElementById('f-anno').value;
-    var nome = document.getElementById('f-nome').value.trim();
     try {
-      var r = await apiPost({ action: 'listTimbrature', mese: mese, anno: anno, nome: nome });
-      if (!r.ok) throw new Error(r.error || 'Errore turni');
+      var r = await apiCall({
+        action: 'listTimbrature',
+        mese: document.getElementById('f-mese').value,
+        anno: document.getElementById('f-anno').value,
+        nome: document.getElementById('f-nome').value.trim()
+      });
       var turni = (r.turni && r.turni.dettagli) || [];
       var tot = (r.turni && r.turni.totaliMese) || [];
-
       var tb = document.getElementById('turni-body');
       if (!turni.length) {
         tb.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400">Nessun turno nel periodo</td></tr>';
@@ -319,17 +366,20 @@
             '<td class="p-2.5 font-semibold">' + formatOre(t.minuti) + '</td></tr>';
         }).join('');
       }
-
       var totb = document.getElementById('tot-body');
       if (!tot.length) {
         totb.innerHTML = '<tr><td colspan="2" class="p-3 text-center text-slate-400">—</td></tr>';
       } else {
         totb.innerHTML = tot.map(function (t) {
-          return '<tr><td class="p-2.5 font-semibold">' + escapeHtml(t.nome) + '</td><td class="p-2.5 font-bold text-indigo-600">' + formatOre(t.minuti) + '</td></tr>';
+          return '<tr><td class="p-2.5 font-semibold">' + escapeHtml(t.nome) +
+            '</td><td class="p-2.5 font-bold text-indigo-600">' + formatOre(t.minuti) + '</td></tr>';
         }).join('');
       }
     } catch (err) {
-      toast(err.message, 'error');
+      console.error(err);
+      toast(err.message || 'Errore turni', 'error');
+      document.getElementById('turni-body').innerHTML =
+        '<tr><td colspan="6" class="p-4 text-center text-rose-500">' + escapeHtml(err.message || 'Errore') + '</td></tr>';
     }
   }
 
@@ -341,15 +391,18 @@
     busy = true;
     document.getElementById('create-box').classList.add('hidden');
     try {
-      var r = await apiPost({ action: 'timbra', uid: uid, operatore: loggedUserName || 'NFC' });
+      var r = await apiCall({
+        action: 'timbra',
+        uid: uid,
+        operatore: loggedUserName || 'NFC'
+      });
       if (r.needCreate) {
         document.getElementById('new-uid').textContent = uid;
         document.getElementById('new-name').value = '';
         document.getElementById('create-box').classList.remove('hidden');
-        toast('Tessera nuova', 'info');
+        toast('Tessera nuova: inserisci il nome', 'info');
         return;
       }
-      if (!r.ok) throw new Error(r.error || 'Errore');
       var t = r.timbratura;
       var oraR = roundTo15(t.ora);
       document.getElementById('live-msg').textContent =
@@ -358,7 +411,8 @@
       loadDipendenti();
       loadTurni();
     } catch (err) {
-      toast(err.message, 'error');
+      console.error(err);
+      toast(err.message || 'Errore timbratura', 'error');
     } finally {
       busy = false;
     }
@@ -366,41 +420,65 @@
 
   async function creaETimbra() {
     var nome = document.getElementById('new-name').value.trim();
-    if (!nome || !pendingUid) return;
+    if (!nome) { toast('Inserisci il nome', 'error'); return; }
+    if (!pendingUid) return;
     busy = true;
     try {
-      var r = await apiPost({ action: 'timbra', uid: pendingUid, nome: nome, tipo: 'IN', operatore: loggedUserName || 'NFC' });
-      if (!r.ok) throw new Error(r.error || 'Errore');
+      var r = await apiCall({
+        action: 'timbra',
+        uid: pendingUid,
+        nome: nome,
+        tipo: 'IN',
+        operatore: loggedUserName || 'NFC'
+      });
       document.getElementById('create-box').classList.add('hidden');
-      toast('Creato ' + r.timbratura.nome + ' + IN', 'success');
+      var t = r.timbratura;
+      document.getElementById('live-msg').textContent =
+        '🟢 INGRESSO — ' + t.nome + ' (nuovo) alle ' + roundTo15(t.ora);
+      toast('Creato ' + t.nome + ' + IN', 'success');
       loadDipendenti();
       loadTurni();
     } catch (err) {
-      toast(err.message, 'error');
+      console.error(err);
+      toast(err.message || 'Errore', 'error');
     } finally {
       busy = false;
     }
   }
 
+  function setWsStatus(on) {
+    var el = document.getElementById('ws-status');
+    if (!el) return;
+    el.textContent = on ? 'Bridge ON' : 'Bridge OFF';
+    el.className = 'px-2.5 py-1 text-[11px] font-semibold rounded-lg border ' + (on
+      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+      : 'bg-rose-50 text-rose-600 border-rose-200');
+  }
+
   function connectWs() {
-    var ws = new WebSocket(WS_URL);
-    ws.onopen = function () {
-      var el = document.getElementById('ws-status');
-      el.textContent = 'Bridge ON';
-      el.className = 'px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200';
-    };
-    ws.onclose = function () {
-      var el = document.getElementById('ws-status');
-      el.textContent = 'Bridge OFF';
-      el.className = 'px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-rose-50 text-rose-600 border border-rose-200';
-      setTimeout(connectWs, 3000);
-    };
-    ws.onmessage = function (ev) {
-      try {
-        var data = JSON.parse(ev.data);
-        if (data.event === 'card' && data.uid) onCard(data.uid);
-      } catch (e) {}
-    };
+    try {
+      if (ws) {
+        try { ws.close(); } catch (e) {}
+      }
+      ws = new WebSocket(WS_URL);
+      ws.onopen = function () { setWsStatus(true); };
+      ws.onclose = function () {
+        setWsStatus(false);
+        setTimeout(function () {
+          if (sessionStorage.getItem('nfc_timb_user')) connectWs();
+        }, 3000);
+      };
+      ws.onerror = function () { setWsStatus(false); };
+      ws.onmessage = function (ev) {
+        try {
+          var data = JSON.parse(ev.data);
+          if (data.event === 'card' && data.uid) onCard(data.uid);
+          if (data.uid && !data.event) onCard(data.uid);
+        } catch (e) {}
+      };
+    } catch (e) {
+      setWsStatus(false);
+    }
   }
 </script>
 </body>
