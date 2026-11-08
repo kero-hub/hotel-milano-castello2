@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="it" class="h-full">
+<html lang="it">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,108 +14,324 @@
 
 <div id="toast" class="fixed top-4 right-4 z-50 space-y-2"></div>
 
-<header class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-20 shadow-sm">
-  <div class="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-    <div class="flex items-center gap-3">
-      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-indigo-600 text-white flex items-center justify-center">
-        <i class="fa-solid fa-id-card-clip"></i>
+<!-- LOGIN -->
+<div id="login-overlay" class="fixed inset-0 z-50 bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4">
+  <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 w-full max-w-md p-6 sm:p-8">
+    <div class="text-center mb-6">
+      <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-500 to-indigo-600 flex items-center justify-center text-white mx-auto mb-4">
+        <i class="fa-solid fa-id-card-clip text-2xl"></i>
+      </div>
+      <h2 class="text-xl font-bold">Alloggiato KM Manager</h2>
+      <p class="text-xs text-slate-500 mt-1">Timbrature NFC — Accedi</p>
+    </div>
+    <form onsubmit="handleLogin(event)" class="space-y-4">
+      <div>
+        <label class="block text-xs font-semibold mb-1">Username</label>
+        <input id="username" required class="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs">
       </div>
       <div>
-        <div class="text-sm font-black text-amber-600 uppercase tracking-wider">Alloggiato KM Manager</div>
-        <div class="text-xs text-slate-500">Timbrature NFC · Hotel Milano Castello</div>
+        <label class="block text-xs font-semibold mb-1">Password</label>
+        <input id="password" type="password" required class="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs">
+      </div>
+      <div id="login-error" class="hidden text-xs text-rose-600 text-center font-medium"></div>
+      <button class="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold rounded-xl">Accedi</button>
+    </form>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+  <header class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-20 shadow-sm">
+    <div class="max-w-5xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-indigo-600 text-white flex items-center justify-center">
+          <i class="fa-solid fa-id-card-clip"></i>
+        </div>
+        <div>
+          <div class="text-sm font-black text-amber-600 uppercase tracking-wider">Alloggiato KM Manager</div>
+          <div class="text-xs text-slate-500">Timbrature NFC · Hotel Milano Castello</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <span id="ws-status" class="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-rose-50 text-rose-600 border border-rose-200">Bridge OFF</span>
+        <span class="px-2.5 py-1 text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 rounded-lg">
+          <i class="fa-solid fa-user-check"></i> <span id="logged-username">Utente</span>
+        </span>
+        <button type="button" onclick="handleLogout()" class="px-3 py-2 text-xs font-semibold text-rose-600 bg-rose-50 rounded-lg">Esci</button>
       </div>
     </div>
-    <span id="ws-status" class="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-rose-50 text-rose-600 border border-rose-200">Bridge OFF</span>
-  </div>
-</header>
+  </header>
 
-<main class="max-w-3xl mx-auto px-4 py-6 space-y-5">
+  <main class="max-w-5xl mx-auto px-4 py-6 space-y-5">
 
-  <section class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 text-center shadow-sm">
-    <div id="icon" class="w-20 h-20 mx-auto rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-3xl text-slate-400 mb-3">
-      <i class="fa-solid fa-wifi"></i>
-    </div>
-    <h1 class="text-lg font-bold">Avvicina il cartellino all’ACR122</h1>
-    <p class="text-xs text-slate-500 mt-1">Python <code>nfc_bridge.py</code> deve essere avviato sul PC</p>
-    <div class="mt-4 text-sm">
-      <span class="text-slate-500">Ultimo UID:</span>
-      <span id="last-uid" class="font-mono font-semibold">—</span>
-    </div>
-  </section>
+    <!-- Lettore -->
+    <section class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 shadow-sm">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 class="text-base font-bold">Avvicina il cartellino all’ACR122</h1>
+          <p class="text-xs text-slate-500">Orari arrotondati ai 15 minuti · Python bridge attivo sul PC</p>
+        </div>
+        <div class="text-sm">UID: <span id="last-uid" class="font-mono font-semibold">—</span></div>
+      </div>
+      <div id="live-msg" class="mt-3 text-sm font-semibold text-slate-600"></div>
+    </section>
 
-  <section id="result-box" class="hidden bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 shadow-sm">
-    <div id="result-title" class="text-base font-bold mb-2">—</div>
-    <div id="result-detail" class="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap"></div>
-  </section>
+    <!-- Nuova tessera -->
+    <section id="create-box" class="hidden bg-amber-50 dark:bg-amber-950/30 border border-amber-200 rounded-2xl p-5">
+      <h2 class="text-sm font-bold mb-2">Tessera nuova — crea dipendente</h2>
+      <p class="text-xs mb-2">UID: <span id="new-uid" class="font-mono font-semibold"></span></p>
+      <input id="new-name" class="w-full px-3 py-2 rounded-xl border text-sm mb-3 bg-white dark:bg-slate-900" placeholder="Nome e cognome">
+      <button type="button" onclick="creaETimbra()" class="w-full py-2.5 bg-amber-500 text-white text-sm font-semibold rounded-xl">Salva e timbra IN</button>
+    </section>
 
-  <!-- Nuova tessera -->
-  <section id="create-box" class="hidden bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-2xl p-5">
-    <h2 class="text-sm font-bold text-amber-800 dark:text-amber-200 mb-2">
-      <i class="fa-solid fa-user-plus"></i> Tessera nuova — crea dipendente
-    </h2>
-    <p class="text-xs text-slate-600 dark:text-slate-300 mb-3">UID: <span id="new-uid" class="font-mono font-semibold"></span></p>
-    <input id="new-name" type="text" placeholder="Nome e cognome dipendente" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm mb-3">
-    <button type="button" onclick="creaETimbra()" class="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold rounded-xl">
-      Salva dipendente e timbra IN
-    </button>
-  </section>
+    <!-- Dipendenti -->
+    <section class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-5">
+      <div class="flex items-center justify-between gap-2 mb-3">
+        <h2 class="text-sm font-bold flex items-center gap-2"><i class="fa-solid fa-users text-amber-500"></i> Dipendenti</h2>
+        <button type="button" onclick="loadDipendenti()" class="px-3 py-1.5 text-xs font-semibold bg-indigo-600 text-white rounded-lg">Aggiorna</button>
+      </div>
+      <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
+        <table class="w-full text-left text-xs">
+          <thead>
+            <tr class="bg-amber-500/10 text-amber-900 dark:text-amber-200 font-bold border-b border-amber-500/20">
+              <th class="p-2.5">Stato</th>
+              <th class="p-2.5">Nome</th>
+              <th class="p-2.5">Arrivo (arroton.)</th>
+              <th class="p-2.5">UID</th>
+            </tr>
+          </thead>
+          <tbody id="dip-body" class="divide-y divide-slate-100 dark:divide-slate-700/50"></tbody>
+        </table>
+      </div>
+    </section>
 
-  <section class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm">
-    <div class="flex items-center justify-between mb-2">
-      <h3 class="text-xs font-bold uppercase text-slate-500">Log</h3>
-      <button type="button" onclick="document.getElementById('log').innerHTML=''" class="text-[11px] text-slate-400">Pulisci</button>
-    </div>
-    <div id="log" class="text-[11px] font-mono text-slate-600 dark:text-slate-400 max-h-48 overflow-y-auto space-y-1"></div>
-  </section>
-</main>
+    <!-- Turni mese -->
+    <section class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-5">
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <h2 class="text-sm font-bold flex items-center gap-2"><i class="fa-solid fa-table-list text-amber-500"></i> Turni del mese</h2>
+        <div class="flex flex-wrap gap-2">
+          <select id="f-mese" class="px-2 py-1.5 rounded-lg border text-xs bg-white dark:bg-slate-900"></select>
+          <input id="f-anno" type="number" class="w-20 px-2 py-1.5 rounded-lg border text-xs bg-white dark:bg-slate-900">
+          <input id="f-nome" type="text" placeholder="Filtra nome..." class="px-2 py-1.5 rounded-lg border text-xs bg-white dark:bg-slate-900">
+          <button type="button" onclick="loadTurni()" class="px-3 py-1.5 text-xs font-semibold bg-indigo-600 text-white rounded-lg">Filtra</button>
+        </div>
+      </div>
 
-<footer class="border-t border-slate-200 dark:border-slate-700 py-3 text-center text-[11px] text-slate-500">
-  Copyright © Alloggiati KM Manager | All rights reserved
-</footer>
+      <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700 mb-4">
+        <table class="w-full text-left text-xs">
+          <thead>
+            <tr class="bg-amber-500/10 text-amber-900 dark:text-amber-200 font-bold border-b border-amber-500/20">
+              <th class="p-2.5">Dipendente</th>
+              <th class="p-2.5">Data IN</th>
+              <th class="p-2.5">Ora IN</th>
+              <th class="p-2.5">Data OUT</th>
+              <th class="p-2.5">Ora OUT</th>
+              <th class="p-2.5">Ore turno</th>
+            </tr>
+          </thead>
+          <tbody id="turni-body" class="divide-y divide-slate-100 dark:divide-slate-700/50"></tbody>
+        </table>
+      </div>
+
+      <h3 class="text-xs font-bold text-slate-500 uppercase mb-2">Totali mese</h3>
+      <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
+        <table class="w-full text-left text-xs">
+          <thead>
+            <tr class="bg-indigo-500/10 font-bold border-b">
+              <th class="p-2.5">Dipendente</th>
+              <th class="p-2.5">Ore totali mese</th>
+            </tr>
+          </thead>
+          <tbody id="tot-body"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="border-t border-slate-200 dark:border-slate-700 py-3 text-center text-[11px] text-slate-500">
+    Copyright © Alloggiati KM Manager | All rights reserved
+  </footer>
+</div>
 
 <script>
-  // ←←← URL App Web Apps Script (/exec)
+  const LOGIN_URL = 'https://script.google.com/macros/s/AKfycbxJpJZmw3Yr2odzTh-bmUpTqRPbKu2z_8hT0WbZ3ig-Rn5iopRxXLjuqTGaxSeYifhJ/exec';
   const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwgeaYGpsShHBoLHycMA3zkgdawZ4w-TSyZZ4Z5tM_8W_pzN79XciSLiGpjBV_U66Mf/exec';
   const WS_URL = 'ws://127.0.0.1:8765';
 
+  let loggedUserName = '';
   let pendingUid = '';
   let busy = false;
 
+  /** Arrotonda a 15 minuti: 14:13→14:15, 14:05→14:00, 14:07→14:00, 14:08→14:15 */
+  function roundTo15(oraStr) {
+    if (!oraStr) return '—';
+    var p = String(oraStr).trim().split(':');
+    var h = parseInt(p[0], 10) || 0;
+    var m = parseInt(p[1], 10) || 0;
+    var total = h * 60 + m;
+    var rounded = Math.round(total / 15) * 15;
+    if (rounded >= 24 * 60) rounded = 24 * 60 - 15;
+    var rh = Math.floor(rounded / 60);
+    var rm = rounded % 60;
+    return String(rh).padStart(2, '0') + ':' + String(rm).padStart(2, '0');
+  }
+
+  function formatOre(minuti) {
+    var m = Math.max(0, Math.round(minuti || 0));
+    var h = Math.floor(m / 60);
+    var mm = m % 60;
+    return h + 'h ' + String(mm).padStart(2, '0') + 'm';
+  }
+
   function toast(msg, type) {
-    const c = document.getElementById('toast');
-    const d = document.createElement('div');
-    d.className = 'px-4 py-2 rounded-xl text-xs font-medium text-white shadow-lg ' + (type === 'error' ? 'bg-rose-600' : type === 'success' ? 'bg-emerald-600' : 'bg-slate-800');
+    var c = document.getElementById('toast');
+    var d = document.createElement('div');
+    d.className = 'px-4 py-2 rounded-xl text-xs font-medium text-white shadow ' + (type === 'error' ? 'bg-rose-600' : type === 'success' ? 'bg-emerald-600' : 'bg-slate-800');
     d.textContent = msg;
     c.appendChild(d);
-    setTimeout(() => d.remove(), 3500);
+    setTimeout(function () { d.remove(); }, 3500);
   }
 
-  function log(msg) {
-    const el = document.getElementById('log');
-    const t = new Date().toLocaleTimeString('it-IT');
-    el.innerHTML = '<div><span class="text-slate-400">[' + t + ']</span> ' + msg + '</div>' + el.innerHTML;
+  function escapeHtml(s) {
+    return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
 
-  function setWs(ok) {
-    const el = document.getElementById('ws-status');
-    el.textContent = ok ? 'Bridge ON' : 'Bridge OFF';
-    el.className = 'px-2.5 py-1 text-[11px] font-semibold rounded-lg border ' + (ok
-      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-      : 'bg-rose-50 text-rose-600 border-rose-200');
-    const icon = document.getElementById('icon');
-    icon.className = 'w-20 h-20 mx-auto rounded-full flex items-center justify-center text-3xl mb-3 ' + (ok
-      ? 'bg-amber-50 text-amber-500 animate-pulse'
-      : 'bg-slate-100 dark:bg-slate-700 text-slate-400');
+  // Login
+  window.addEventListener('DOMContentLoaded', function () {
+    var now = new Date();
+    var sel = document.getElementById('f-mese');
+    var mesi = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+    for (var i = 1; i <= 12; i++) {
+      var o = document.createElement('option');
+      o.value = i;
+      o.textContent = mesi[i - 1];
+      if (i === now.getMonth() + 1) o.selected = true;
+      sel.appendChild(o);
+    }
+    document.getElementById('f-anno').value = now.getFullYear();
+    checkAuth();
+  });
+
+  function checkAuth() {
+    var u = sessionStorage.getItem('nfc_timb_user');
+    if (u) {
+      loggedUserName = u;
+      document.getElementById('login-overlay').classList.add('hidden');
+      document.getElementById('app').classList.remove('hidden');
+      document.getElementById('logged-username').textContent = u;
+      connectWs();
+      loadDipendenti();
+      loadTurni();
+    } else {
+      document.getElementById('login-overlay').classList.remove('hidden');
+      document.getElementById('app').classList.add('hidden');
+    }
+  }
+
+  async function handleLogin(e) {
+    e.preventDefault();
+    var u = document.getElementById('username').value.trim().toLowerCase();
+    var p = document.getElementById('password').value.trim();
+    var err = document.getElementById('login-error');
+    err.classList.add('hidden');
+    try {
+      var q = LOGIN_URL + (LOGIN_URL.indexOf('?') >= 0 ? '&' : '?') + 'action=login&username=' + encodeURIComponent(u) + '&password=' + encodeURIComponent(p);
+      var res = await fetch(q, { method: 'GET', redirect: 'follow', cache: 'no-cache' });
+      var text = await res.text();
+      var json = null;
+      try { json = JSON.parse(text); } catch (e2) {}
+      if (json && json.ok) {
+        var display = json.user || (u.charAt(0).toUpperCase() + u.slice(1));
+        sessionStorage.setItem('nfc_timb_user', display);
+        checkAuth();
+        toast('Ciao ' + display, 'success');
+      } else {
+        err.textContent = 'Credenziali non valide';
+        err.classList.remove('hidden');
+      }
+    } catch (e3) {
+      err.textContent = 'Errore connessione';
+      err.classList.remove('hidden');
+    }
+  }
+
+  function handleLogout() {
+    sessionStorage.removeItem('nfc_timb_user');
+    checkAuth();
   }
 
   async function apiPost(payload) {
-    const res = await fetch(SCRIPT_URL, {
+    var res = await fetch(SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(payload)
     });
-    const text = await res.text();
-    try { return JSON.parse(text); } catch (e) { throw new Error('Risposta non valida dallo script'); }
+    var text = await res.text();
+    try { return JSON.parse(text); } catch (e) { throw new Error('Risposta script non valida'); }
+  }
+
+  async function loadDipendenti() {
+    try {
+      var r = await apiPost({ action: 'listDipendenti' });
+      if (!r.ok) throw new Error(r.error || 'Errore lista');
+      var body = document.getElementById('dip-body');
+      var list = r.dipendenti || [];
+      if (!list.length) {
+        body.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-400">Nessun dipendente</td></tr>';
+        return;
+      }
+      body.innerHTML = list.map(function (d) {
+        var rowClass = d.presente ? 'bg-emerald-50 dark:bg-emerald-950/30' : '';
+        var stato = d.presente
+          ? '<span class="px-2 py-0.5 rounded-lg bg-emerald-600 text-white text-[10px] font-bold">IN</span>'
+          : '<span class="px-2 py-0.5 rounded-lg bg-slate-200 text-slate-600 text-[10px] font-bold">OUT</span>';
+        var arrivo = d.presente ? roundTo15(d.oraArrivo) : '—';
+        return '<tr class="' + rowClass + '">' +
+          '<td class="p-2.5">' + stato + '</td>' +
+          '<td class="p-2.5 font-semibold">' + escapeHtml(d.nome) + '</td>' +
+          '<td class="p-2.5 font-mono">' + escapeHtml(arrivo) + '</td>' +
+          '<td class="p-2.5 font-mono text-[10px]">' + escapeHtml(d.uid) + '</td></tr>';
+      }).join('');
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  }
+
+  async function loadTurni() {
+    var mese = document.getElementById('f-mese').value;
+    var anno = document.getElementById('f-anno').value;
+    var nome = document.getElementById('f-nome').value.trim();
+    try {
+      var r = await apiPost({ action: 'listTimbrature', mese: mese, anno: anno, nome: nome });
+      if (!r.ok) throw new Error(r.error || 'Errore turni');
+      var turni = (r.turni && r.turni.dettagli) || [];
+      var tot = (r.turni && r.turni.totaliMese) || [];
+
+      var tb = document.getElementById('turni-body');
+      if (!turni.length) {
+        tb.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400">Nessun turno nel periodo</td></tr>';
+      } else {
+        tb.innerHTML = turni.map(function (t) {
+          return '<tr>' +
+            '<td class="p-2.5 font-semibold">' + escapeHtml(t.nome) + '</td>' +
+            '<td class="p-2.5">' + escapeHtml(t.dataIn) + '</td>' +
+            '<td class="p-2.5 font-mono">' + escapeHtml(roundTo15(t.oraIn)) + '</td>' +
+            '<td class="p-2.5">' + escapeHtml(t.dataOut) + '</td>' +
+            '<td class="p-2.5 font-mono">' + escapeHtml(roundTo15(t.oraOut)) + '</td>' +
+            '<td class="p-2.5 font-semibold">' + formatOre(t.minuti) + '</td></tr>';
+        }).join('');
+      }
+
+      var totb = document.getElementById('tot-body');
+      if (!tot.length) {
+        totb.innerHTML = '<tr><td colspan="2" class="p-3 text-center text-slate-400">—</td></tr>';
+      } else {
+        totb.innerHTML = tot.map(function (t) {
+          return '<tr><td class="p-2.5 font-semibold">' + escapeHtml(t.nome) + '</td><td class="p-2.5 font-bold text-indigo-600">' + formatOre(t.minuti) + '</td></tr>';
+        }).join('');
+      }
+    } catch (err) {
+      toast(err.message, 'error');
+    }
   }
 
   async function onCard(uid) {
@@ -125,94 +341,68 @@
     pendingUid = uid;
     busy = true;
     document.getElementById('create-box').classList.add('hidden');
-
     try {
-      if (!SCRIPT_URL || SCRIPT_URL.indexOf('INCOLLA_') === 0) {
-        throw new Error('Configura SCRIPT_URL con l’URL App Web');
-      }
-
-      const r = await apiPost({ action: 'timbra', uid: uid, operatore: 'NFC-PC' });
-
+      var r = await apiPost({ action: 'timbra', uid: uid, operatore: loggedUserName || 'NFC' });
       if (r.needCreate) {
         document.getElementById('new-uid').textContent = uid;
         document.getElementById('new-name').value = '';
         document.getElementById('create-box').classList.remove('hidden');
-        document.getElementById('result-box').classList.add('hidden');
-        toast('Tessera nuova: inserisci il nome', 'info');
-        log('Nuova tessera ' + uid);
+        toast('Tessera nuova', 'info');
         return;
       }
-
-      if (!r.ok) throw new Error(r.error || 'Errore timbratura');
-
-      const t = r.timbratura;
-      const isIn = t.tipo === 'IN';
-      document.getElementById('result-box').classList.remove('hidden');
-      document.getElementById('result-title').textContent = (isIn ? '🟢 INGRESSO' : '🔴 USCITA') + ' — ' + t.nome;
-      document.getElementById('result-detail').textContent =
-        'Tipo: ' + t.tipo + '\nData: ' + t.data + '\nOra: ' + t.ora + '\nUID: ' + t.uid;
-      document.getElementById('icon').className = 'w-20 h-20 mx-auto rounded-full flex items-center justify-center text-3xl mb-3 ' +
-        (isIn ? 'bg-emerald-50 text-emerald-500' : 'bg-rose-50 text-rose-500');
-      toast(t.nome + ' → ' + t.tipo, 'success');
-      log(t.tipo + ' ' + t.nome + ' ' + t.ora);
+      if (!r.ok) throw new Error(r.error || 'Errore');
+      var t = r.timbratura;
+      var oraR = roundTo15(t.ora);
+      document.getElementById('live-msg').textContent =
+        (t.tipo === 'IN' ? '🟢 INGRESSO' : '🔴 USCITA') + ' — ' + t.nome + ' alle ' + oraR + ' (arrotondato)';
+      toast(t.nome + ' → ' + t.tipo + ' ' + oraR, 'success');
+      loadDipendenti();
+      loadTurni();
     } catch (err) {
-      toast(err.message || 'Errore', 'error');
-      log('ERR: ' + (err.message || err));
+      toast(err.message, 'error');
     } finally {
       busy = false;
     }
   }
 
   async function creaETimbra() {
-    const nome = document.getElementById('new-name').value.trim();
-    if (!nome) { toast('Inserisci il nome', 'error'); return; }
-    if (!pendingUid) return;
+    var nome = document.getElementById('new-name').value.trim();
+    if (!nome || !pendingUid) return;
     busy = true;
     try {
-      const r = await apiPost({
-        action: 'timbra',
-        uid: pendingUid,
-        nome: nome,
-        tipo: 'IN',
-        operatore: 'NFC-PC'
-      });
-      if (!r.ok) throw new Error(r.error || 'Errore creazione');
+      var r = await apiPost({ action: 'timbra', uid: pendingUid, nome: nome, tipo: 'IN', operatore: loggedUserName || 'NFC' });
+      if (!r.ok) throw new Error(r.error || 'Errore');
       document.getElementById('create-box').classList.add('hidden');
-      const t = r.timbratura;
-      document.getElementById('result-box').classList.remove('hidden');
-      document.getElementById('result-title').textContent = '🟢 INGRESSO — ' + t.nome + ' (nuovo)';
-      document.getElementById('result-detail').textContent =
-        'Dipendente creato e timbrato\nTipo: IN\nData: ' + t.data + '\nOra: ' + t.ora + '\nUID: ' + t.uid;
-      toast('Dipendente creato: ' + t.nome, 'success');
-      log('Creato ' + t.nome + ' + IN');
+      toast('Creato ' + r.timbratura.nome + ' + IN', 'success');
+      loadDipendenti();
+      loadTurni();
     } catch (err) {
-      toast(err.message || 'Errore', 'error');
+      toast(err.message, 'error');
     } finally {
       busy = false;
     }
   }
 
   function connectWs() {
-    const ws = new WebSocket(WS_URL);
+    var ws = new WebSocket(WS_URL);
     ws.onopen = function () {
-      setWs(true);
-      log('Bridge collegato');
+      var el = document.getElementById('ws-status');
+      el.textContent = 'Bridge ON';
+      el.className = 'px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200';
     };
     ws.onclose = function () {
-      setWs(false);
-      log('Bridge disconnesso — riprovo...');
+      var el = document.getElementById('ws-status');
+      el.textContent = 'Bridge OFF';
+      el.className = 'px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-rose-50 text-rose-600 border border-rose-200';
       setTimeout(connectWs, 3000);
     };
-    ws.onerror = function () { log('Errore WebSocket'); };
     ws.onmessage = function (ev) {
-      let data;
-      try { data = JSON.parse(ev.data); } catch (e) { return; }
-      if (data.event === 'card' && data.uid) onCard(data.uid);
-      if (data.event === 'hello') log(data.message || 'hello');
+      try {
+        var data = JSON.parse(ev.data);
+        if (data.event === 'card' && data.uid) onCard(data.uid);
+      } catch (e) {}
     };
   }
-
-  connectWs();
 </script>
 </body>
 </html>
