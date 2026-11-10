@@ -9,13 +9,13 @@
   <style>
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
     .row-in { background: #ecfdf5; }
+    .sticky-col { position: sticky; left: 0; z-index: 5; background: inherit; }
   </style>
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen">
 
 <div id="toasts" class="fixed top-4 right-4 z-50 space-y-2"></div>
 
-<!-- LOGIN -->
 <div id="login" class="fixed inset-0 z-40 bg-slate-900/90 flex items-center justify-center p-4">
   <form onsubmit="return doLogin(event)" class="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl space-y-4">
     <div class="text-center">
@@ -36,8 +36,7 @@
   </form>
 </div>
 
-<!-- APP -->
-<div id="app" class="hidden max-w-5xl mx-auto p-4 space-y-4">
+<div id="app" class="hidden max-w-6xl mx-auto p-4 space-y-4">
   <header class="bg-white rounded-2xl border shadow-sm p-4 flex flex-wrap items-center justify-between gap-3">
     <div>
       <div class="text-amber-600 font-black text-sm">ALLOGGIATO KM MANAGER</div>
@@ -49,22 +48,18 @@
     </div>
   </header>
 
-  <!-- Lettore -->
   <section class="bg-white rounded-2xl border shadow-sm p-4">
     <h2 class="font-bold text-sm mb-1"><i class="fa-solid fa-id-card-clip text-amber-500"></i> Passa il cartellino</h2>
-    <p class="text-xs text-slate-500 mb-3">Python <code>nfc_bridge.py</code> deve essere avviato</p>
+    <p class="text-xs text-slate-500 mb-3">Avvia <code>nfc_bridge.py</code> · ore arrotondate 15 min</p>
     <div class="text-sm">UID: <b id="uidBox">—</b></div>
     <div id="msgBox" class="mt-2 text-sm font-semibold text-slate-700 min-h-[1.5rem]"></div>
-
-    <!-- test manuale se NFC non manda evento -->
     <div class="mt-3 flex flex-wrap gap-2">
       <input id="manualUid" placeholder="UID manuale es. A727004F" class="border rounded-lg px-2 py-1.5 text-xs flex-1 min-w-[160px]">
       <button type="button" onclick="timbra(document.getElementById('manualUid').value)" class="bg-indigo-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg">Timbra UID</button>
-      <button type="button" onclick="refreshAll()" class="bg-slate-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg">Aggiorna liste</button>
+      <button type="button" onclick="refreshAll()" class="bg-slate-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg">Aggiorna</button>
     </div>
   </section>
 
-  <!-- Nuova tessera -->
   <section id="newBox" class="hidden bg-amber-50 border border-amber-200 rounded-2xl p-4">
     <h3 class="font-bold text-sm text-amber-800 mb-2">Tessera nuova</h3>
     <p class="text-xs mb-2">UID: <b id="newUid"></b></p>
@@ -72,9 +67,11 @@
     <button type="button" onclick="creaDipendente()" class="w-full bg-amber-500 text-white font-semibold rounded-xl py-2 text-sm">Salva e timbra IN</button>
   </section>
 
-  <!-- Dipendenti -->
   <section class="bg-white rounded-2xl border shadow-sm p-4">
-    <h2 class="font-bold text-sm mb-3"><i class="fa-solid fa-users text-amber-500"></i> Dipendenti</h2>
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="font-bold text-sm"><i class="fa-solid fa-users text-amber-500"></i> Dipendenti</h2>
+      <button type="button" onclick="loadDipendenti()" class="bg-indigo-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg">Aggiorna</button>
+    </div>
     <div class="overflow-x-auto border rounded-xl">
       <table class="w-full text-xs">
         <thead class="bg-amber-50 font-bold">
@@ -85,48 +82,26 @@
             <th class="p-2 text-left">UID</th>
           </tr>
         </thead>
-        <tbody id="dipBody">
-          <tr><td colspan="4" class="p-3 text-center text-slate-400">—</td></tr>
-        </tbody>
+        <tbody id="dipBody"><tr><td colspan="4" class="p-3 text-center text-slate-400">—</td></tr></tbody>
       </table>
     </div>
   </section>
 
-  <!-- Turni -->
   <section class="bg-white rounded-2xl border shadow-sm p-4">
-    <div class="flex flex-wrap gap-2 items-center justify-between mb-3">
-      <h2 class="font-bold text-sm"><i class="fa-solid fa-table text-amber-500"></i> Turni mese</h2>
+    <div class="flex flex-wrap gap-2 items-center justify-between mb-2">
+      <h2 class="font-bold text-sm"><i class="fa-solid fa-calendar-days text-amber-500"></i> Griglia ore mese</h2>
       <div class="flex flex-wrap gap-2">
         <select id="mese" class="border rounded-lg text-xs px-2 py-1.5"></select>
         <input id="anno" type="number" class="border rounded-lg text-xs px-2 py-1.5 w-20">
         <input id="filtroNome" placeholder="Nome..." class="border rounded-lg text-xs px-2 py-1.5">
-        <button type="button" onclick="loadTurni()" class="bg-indigo-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg">Filtra</button>
+        <button type="button" onclick="loadGriglia()" class="bg-indigo-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg">Filtra</button>
       </div>
     </div>
-    <div class="overflow-x-auto border rounded-xl mb-3">
-      <table class="w-full text-xs">
-        <thead class="bg-amber-50 font-bold">
-          <tr>
-            <th class="p-2 text-left">Nome</th>
-            <th class="p-2 text-left">IN</th>
-            <th class="p-2 text-left">OUT</th>
-            <th class="p-2 text-left">Ore</th>
-          </tr>
-        </thead>
-        <tbody id="turniBody">
-          <tr><td colspan="4" class="p-3 text-center text-slate-400">—</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <h3 class="text-[11px] font-bold text-slate-500 uppercase mb-1">Totali mese</h3>
+    <p class="text-[11px] text-slate-500 mb-2">Verde = in servizio (IN) · OUT = in pausa · celle = ore (15 min)</p>
     <div class="overflow-x-auto border rounded-xl">
-      <table class="w-full text-xs">
-        <thead class="bg-indigo-50 font-bold">
-          <tr><th class="p-2 text-left">Nome</th><th class="p-2 text-left">Ore totali</th></tr>
-        </thead>
-        <tbody id="totBody">
-          <tr><td colspan="2" class="p-3 text-center text-slate-400">—</td></tr>
-        </tbody>
+      <table class="w-full text-[11px] border-collapse">
+        <thead id="grigliaHead"></thead>
+        <tbody id="grigliaBody"></tbody>
       </table>
     </div>
   </section>
@@ -135,17 +110,15 @@
 </div>
 
 <script>
-  // ====== CONFIG ======
   const LOGIN_URL  = 'https://script.google.com/macros/s/AKfycbxJpJZmw3Yr2odzTh-bmUpTqRPbKu2z_8hT0WbZ3ig-Rn5iopRxXLjuqTGaxSeYifhJ/exec';
-  const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw9x7KMemIoLPSqoD6NOL6msInVZ2aJwrTn8Ij3GSzyB3ElIwblA7JUh3wBlJU5lJQCxw/exec';
-  const WS_URL     = 'ws://127.0.0.1:8765';
+  const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwgeaYGpsShHBoLHycMA3zkgdawZ4w-TSyZZ4Z5tM_8W_pzN79XciSLiGpjBV_U66Mf/exec';
+  const WS_URL = 'ws://127.0.0.1:8765';
 
   let userName = '';
   let busy = false;
   let pendingUid = '';
   let socket = null;
 
-  // ====== UI helpers ======
   function toast(msg, type) {
     const box = document.getElementById('toasts');
     const el = document.createElement('div');
@@ -167,17 +140,18 @@
     let m = parseInt(p[1], 10) || 0;
     let tot = Math.round((h * 60 + m) / 15) * 15;
     if (tot >= 1440) tot = 1425;
-    h = Math.floor(tot / 60);
-    m = tot % 60;
+    h = Math.floor(tot / 60); m = tot % 60;
     return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
   }
 
-  function fmtMin(min) {
-    min = Math.max(0, Math.round(min || 0));
-    return Math.floor(min / 60) + 'h ' + String(min % 60).padStart(2, '0') + 'm';
+  function formatOreShort(minuti) {
+    const m = Math.max(0, Math.round(minuti || 0));
+    if (m <= 0) return '';
+    const h = Math.floor(m / 60);
+    const mm = m % 60;
+    return mm === 0 ? String(h) : (h + ':' + String(mm).padStart(2, '0'));
   }
 
-  // ====== API Google Script ======
   async function api(paramsObj) {
     const u = new URL(SCRIPT_URL);
     Object.keys(paramsObj || {}).forEach(k => {
@@ -185,18 +159,14 @@
         u.searchParams.set(k, String(paramsObj[k]));
       }
     });
-    u.searchParams.set('_ts', String(Date.now())); // no cache
-
+    u.searchParams.set('_ts', String(Date.now()));
     const res = await fetch(u.toString(), { method: 'GET', cache: 'no-store', credentials: 'omit' });
     const text = await res.text();
     console.log('API', paramsObj.action, text);
-
-    if (!text || text.trim()[0] === '<') throw new Error('Risposta non JSON dallo script');
-    const data = JSON.parse(text);
-    return data;
+    if (!text || text.trim()[0] === '<') throw new Error('Risposta non JSON');
+    return JSON.parse(text);
   }
 
-  // ====== LOGIN ======
   async function doLogin(e) {
     e.preventDefault();
     const u = document.getElementById('user').value.trim().toLowerCase();
@@ -205,8 +175,7 @@
     err.classList.add('hidden');
     try {
       const url = LOGIN_URL + '?action=login&username=' + encodeURIComponent(u) + '&password=' + encodeURIComponent(p) + '&_ts=' + Date.now();
-      const res = await fetch(url, { method: 'GET', cache: 'no-store', credentials: 'omit' });
-      const data = JSON.parse(await res.text());
+      const data = JSON.parse(await (await fetch(url, { cache: 'no-store', credentials: 'omit' })).text());
       if (!data.ok) {
         err.textContent = 'Credenziali non valide';
         err.classList.remove('hidden');
@@ -231,11 +200,8 @@
     if (socket) try { socket.close(); } catch (e) {}
     document.getElementById('app').classList.add('hidden');
     document.getElementById('login').classList.remove('hidden');
-    document.getElementById('user').value = '';
-    document.getElementById('pass').value = '';
   }
 
-  // ====== TIMBRATURA ======
   async function timbra(uid, extra) {
     uid = String(uid || '').toUpperCase().replace(/\s+/g, '');
     if (!uid || uid === '—' || busy) return;
@@ -243,18 +209,11 @@
     pendingUid = uid;
     document.getElementById('uidBox').textContent = uid;
     document.getElementById('newBox').classList.add('hidden');
-
     try {
-      const payload = Object.assign({
-        action: 'timbra',
-        uid: uid,
-        operatore: userName || 'NFC'
-      }, extra || {});
+      const data = await api(Object.assign({
+        action: 'timbra', uid: uid, operatore: userName || 'NFC'
+      }, extra || {}));
 
-      const data = await api(payload);
-      console.log('timbra result', data);
-
-      // tessera nuova
       if (data.needCreate) {
         document.getElementById('newUid').textContent = uid;
         document.getElementById('newName').value = '';
@@ -263,26 +222,18 @@
         toast('Tessera non registrata', 'info');
         return;
       }
-
-      if (data.ok === false) {
-        throw new Error(data.error || 'Errore timbratura');
+      if (data.ok === false) throw new Error(data.error || 'Errore timbratura');
+      if (data.service && !data.timbratura) {
+        throw new Error('Script non aggiornato (solo service). Nuova versione App Web.');
       }
-
-      // risposta attesa: data.timbratura
-      let t = data.timbratura;
-      if (!t && data.service) {
-        throw new Error('Script non aggiornato (risponde solo service). Fai Nuova versione App Web.');
-      }
-      if (!t) {
-        throw new Error('Risposta senza timbratura: ' + JSON.stringify(data));
-      }
+      const t = data.timbratura;
+      if (!t) throw new Error('Risposta senza timbratura');
 
       const tipo = String(t.tipo || '').toUpperCase();
       const ora = round15(t.ora);
-      const nome = t.nome || '';
       document.getElementById('msgBox').textContent =
-        (tipo === 'IN' ? '🟢 INGRESSO' : '🔴 USCITA') + ' — ' + nome + ' alle ' + ora;
-      toast(nome + ' → ' + tipo + ' ' + ora, 'success');
+        (tipo === 'IN' ? '🟢 INGRESSO' : '🔴 USCITA') + ' — ' + (t.nome || '') + ' alle ' + ora;
+      toast((t.nome || '') + ' → ' + tipo + ' ' + ora, 'success');
       await refreshAll();
     } catch (ex) {
       console.error(ex);
@@ -301,7 +252,6 @@
     document.getElementById('newBox').classList.add('hidden');
   }
 
-  // ====== LISTE ======
   async function loadDipendenti() {
     try {
       const data = await api({ action: 'listDipendenti' });
@@ -312,7 +262,6 @@
         body.innerHTML = '<tr><td colspan="4" class="p-3 text-center text-slate-400">Nessun dipendente</td></tr>';
         return;
       }
-      // presenti prima
       list.sort((a, b) => {
         if (!!a.presente !== !!b.presente) return a.presente ? -1 : 1;
         return String(a.nome || '').localeCompare(String(b.nome || ''), 'it');
@@ -328,56 +277,63 @@
           '<td class="p-2 font-mono text-[10px]">' + esc(d.uid) + '</td></tr>';
       }).join('');
     } catch (ex) {
-      console.error(ex);
       toast(ex.message || 'Errore dipendenti', 'error');
     }
   }
 
-  async function loadTurni() {
+  async function loadGriglia() {
     try {
       const data = await api({
-        action: 'listTimbrature',
+        action: 'grigliaMese',
         mese: document.getElementById('mese').value,
         anno: document.getElementById('anno').value,
         nome: document.getElementById('filtroNome').value.trim()
       });
-      if (data.ok === false) throw new Error(data.error || 'Errore turni');
-      if (data.service && !data.turni) {
-        throw new Error('listTimbrature non attiva nello script (solo service)');
+      if (data.ok === false) throw new Error(data.error || 'Errore griglia');
+      if (data.service && !data.dipendenti) throw new Error('grigliaMese non attiva: nuova versione script');
+
+      const giorni = data.giorniNelMese || 31;
+      const list = data.dipendenti || [];
+
+      let head = '<tr class="bg-amber-50 font-bold border-b">';
+      head += '<th class="p-1.5 text-left sticky-col bg-amber-50 min-w-[120px]">Dipendente</th>';
+      for (let g = 1; g <= giorni; g++) head += '<th class="p-1 text-center min-w-[26px]">' + g + '</th>';
+      head += '<th class="p-1.5 text-center min-w-[44px]">Tot</th></tr>';
+      document.getElementById('grigliaHead').innerHTML = head;
+
+      const body = document.getElementById('grigliaBody');
+      if (!list.length) {
+        body.innerHTML = '<tr><td class="p-3 text-slate-400" colspan="' + (giorni + 2) + '">Nessun dato</td></tr>';
+        return;
       }
-
-      const turni = (data.turni && data.turni.dettagli) || [];
-      const tot = (data.turni && data.turni.totaliMese) || [];
-
-      document.getElementById('turniBody').innerHTML = turni.length
-        ? turni.map(t => '<tr>' +
-            '<td class="p-2 font-semibold">' + esc(t.nome) + '</td>' +
-            '<td class="p-2">' + esc(t.dataIn) + ' ' + esc(round15(t.oraIn)) + '</td>' +
-            '<td class="p-2">' + esc(t.dataOut) + ' ' + esc(round15(t.oraOut)) + '</td>' +
-            '<td class="p-2 font-semibold">' + fmtMin(t.minuti) + '</td></tr>').join('')
-        : '<tr><td colspan="4" class="p-3 text-center text-slate-400">Nessun turno</td></tr>';
-
-      document.getElementById('totBody').innerHTML = tot.length
-        ? tot.map(t => '<tr><td class="p-2 font-semibold">' + esc(t.nome) +
-            '</td><td class="p-2 font-bold text-indigo-700">' + fmtMin(t.minuti) + '</td></tr>').join('')
-        : '<tr><td colspan="2" class="p-3 text-center text-slate-400">—</td></tr>';
+      body.innerHTML = list.map(d => {
+        const presente = !!d.presente;
+        let html = '<tr class="' + (presente ? 'row-in' : '') + ' border-b border-slate-100">';
+        html += '<td class="p-1.5 font-semibold sticky-col">' +
+          (presente ? '<span class="text-[9px] font-bold text-emerald-700">IN</span> ' : '<span class="text-[9px] text-slate-400">OUT</span> ') +
+          esc(d.nome) + '</td>';
+        for (let g = 1; g <= giorni; g++) {
+          const min = (d.giorni && d.giorni[g]) || 0;
+          const txt = formatOreShort(min);
+          html += '<td class="p-1 text-center ' + (min > 0 ? 'font-medium' : 'text-slate-300') + '">' + txt + '</td>';
+        }
+        html += '<td class="p-1.5 text-center font-bold text-indigo-700">' + formatOreShort(d.totaleMinuti) + '</td></tr>';
+        return html;
+      }).join('');
     } catch (ex) {
-      console.error(ex);
-      toast(ex.message || 'Errore turni', 'error');
+      toast(ex.message || 'Errore griglia', 'error');
     }
   }
 
   async function refreshAll() {
     await loadDipendenti();
-    await loadTurni();
+    await loadGriglia();
   }
 
-  // ====== WEBSOCKET NFC ======
   function setWs(on) {
     const el = document.getElementById('wsBadge');
     el.textContent = on ? 'Bridge ON' : 'Bridge OFF';
-    el.className = 'text-[11px] font-bold px-2 py-1 rounded-lg ' +
-      (on ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700');
+    el.className = 'text-[11px] font-bold px-2 py-1 rounded-lg ' + (on ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700');
   }
 
   function connectWs() {
@@ -385,26 +341,18 @@
       if (socket) try { socket.close(); } catch (e) {}
       socket = new WebSocket(WS_URL);
       socket.onopen = () => setWs(true);
-      socket.onclose = () => {
-        setWs(false);
-        if (userName) setTimeout(connectWs, 2500);
-      };
+      socket.onclose = () => { setWs(false); if (userName) setTimeout(connectWs, 2500); };
       socket.onerror = () => setWs(false);
       socket.onmessage = (ev) => {
         try {
           const data = JSON.parse(ev.data);
           const uid = data.uid || (data.payload && data.payload.uid);
-          if ((data.event === 'card' || uid) && uid && uid !== '—') {
-            timbra(uid);
-          }
+          if (uid && uid !== '—') timbra(uid);
         } catch (e) {}
       };
-    } catch (e) {
-      setWs(false);
-    }
+    } catch (e) { setWs(false); }
   }
 
-  // ====== INIT ======
   (function init() {
     const now = new Date();
     const mesi = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
